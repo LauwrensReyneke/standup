@@ -36,7 +36,7 @@ async function setCutoff(time: string) {
 }
 
 async function addMember() {
-  data.value = await apiFetch('/api/manager/members', {
+  data.value = await apiFetch('/api/manager/team', {
     method: 'POST',
     body: JSON.stringify({ email: newMemberEmail.value, name: newMemberName.value }),
   })
@@ -45,7 +45,7 @@ async function addMember() {
 }
 
 async function removeMember(userId: string) {
-  data.value = await apiFetch('/api/manager/members', {
+  data.value = await apiFetch('/api/manager/team', {
     method: 'DELETE',
     body: JSON.stringify({ userId }),
   })

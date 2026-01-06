@@ -27,6 +27,6 @@ export async function verifyMagicLink(token: string): Promise<{ user: SessionUse
 }
 
 export async function logout(): Promise<{ ok: true }> {
-  return apiFetch('/api/auth/logout', { method: 'POST' })
+  // POST is handled by /api/auth/session (consolidated endpoint)
+  return apiFetch('/api/auth/session', { method: 'POST' })
 }
-
