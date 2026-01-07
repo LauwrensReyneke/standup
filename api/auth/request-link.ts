@@ -13,8 +13,6 @@ const Body = z.object({
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return badMethod(req, res, ['POST'])
 
-  await ensureBootstrapTeamAndManager()
-
   const body = Body.safeParse(req.body)
   if (!body.success) return json(res, 400, { error: 'Invalid request body' })
 
@@ -23,6 +21,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!isEmailAllowed(email)) {
     return json(res, 403, { error: 'Not authorized' })
   }
+
+  // If INITIAL_MANAGER_EMAIL is set (recommended for first deploy), this will
+  // create/promote that account as a manager.
+  await ensureBootstrapTeamAndManager({ email, name: email.split('@')[0] })
 
   const user = await getUserByEmail(email)
   if (!user) {

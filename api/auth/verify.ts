@@ -24,6 +24,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!isEmailAllowed(email)) return json(res, 403, { error: 'Not authorized' })
 
+  await ensureBootstrapTeamAndManager({ email, name: email.split('@')[0] })
+
   const user = await getUserByEmail(email)
   if (!user) return json(res, 403, { error: 'User not found' })
 

@@ -71,46 +71,70 @@ export function standupKey(teamId: string, date: string) {
   return `${PREFIX}/standups/${teamId}/${date}.json`
 }
 
-export async function ensureBootstrapTeamAndManager() {
-  const email = process.env.BOOTSTRAP_MANAGER_EMAIL
-  const name = process.env.BOOTSTRAP_MANAGER_NAME || 'Manager'
-  const teamName = process.env.BOOTSTRAP_TEAM_NAME || 'Engineering'
+export async function ensureBootstrapTeamAndManager(opts?: { email?: string; name?: string }) {
+  const bootstrapEmail = (process.env.BOOTSTRAP_MANAGER_EMAIL || '').trim().toLowerCase()
+  const initialManagerEmail = (process.env.INITIAL_MANAGER_EMAIL || '').trim().toLowerCase()
 
+  const email = (bootstrapEmail || initialManagerEmail || opts?.email || '').trim().toLowerCase()
   if (!email) return
 
-  const lower = email.toLowerCase()
-  const mappingKey = teamByEmailKey(lower)
+  const name = process.env.BOOTSTRAP_MANAGER_NAME || opts?.name || 'Manager'
+  const teamName = process.env.BOOTSTRAP_TEAM_NAME || 'Engineering'
 
-  // If mapping exists, we assume bootstrap is done.
-  const existing = await findBlob(mappingKey)
-  if (existing) return
+  const mappingKey = teamByEmailKey(email)
+  const mappingBlob = await findBlob(mappingKey)
 
-  const teamId = nanoid()
-  const managerId = nanoid()
-  const ts = nowIso()
+  // If user doesn't exist yet, create a new team + manager.
+  if (!mappingBlob) {
+    // Safety: if neither BOOTSTRAP_MANAGER_EMAIL nor INITIAL_MANAGER_EMAIL are set,
+    // only allow creating the very first user when there are no users yet.
+    if (!bootstrapEmail && !initialManagerEmail) {
+      const anyUsers = await list({ prefix: `${PREFIX}/users/`, limit: 1 })
+      if (anyUsers.blobs.length > 0) return
+    }
 
-  const team: Team = {
-    id: teamId,
-    name: teamName,
-    standupCutoffTime: process.env.DEFAULT_STANDUP_CUTOFF || '09:30',
-    memberUserIds: [managerId],
-    createdAt: ts,
-    updatedAt: ts,
+    const teamId = nanoid()
+    const managerId = nanoid()
+    const ts = nowIso()
+
+    const team: Team = {
+      id: teamId,
+      name: teamName,
+      standupCutoffTime: process.env.DEFAULT_STANDUP_CUTOFF || '09:30',
+      memberUserIds: [managerId],
+      createdAt: ts,
+      updatedAt: ts,
+    }
+
+    const user: User = {
+      id: managerId,
+      email,
+      name,
+      role: 'manager',
+      teamId,
+      createdAt: ts,
+      updatedAt: ts,
+    }
+
+    await putJson(teamKey(teamId), team)
+    await putJson(usersKey(managerId), user)
+    await putJson(mappingKey, { userId: managerId })
+    return
   }
 
-  const user: User = {
-    id: managerId,
-    email: lower,
-    name,
-    role: 'manager',
-    teamId,
-    createdAt: ts,
-    updatedAt: ts,
-  }
+  // Mapping exists: if INITIAL_MANAGER_EMAIL (or BOOTSTRAP_MANAGER_EMAIL) matches,
+  // ensure the user is promoted to manager.
+  if (email === initialManagerEmail || email === bootstrapEmail) {
+    const { data: mapping } = await readJson<{ userId: string }>(mappingBlob.url)
+    const userBlob = await findBlob(usersKey(mapping.userId))
+    if (!userBlob) return
+    const { data: user } = await readJson<User>(userBlob.url)
 
-  await put(teamKey(teamId), JSON.stringify(team, null, 2), { access: 'private', addRandomSuffix: false })
-  await put(usersKey(managerId), JSON.stringify(user, null, 2), { access: 'private', addRandomSuffix: false })
-  await put(mappingKey, JSON.stringify({ userId: managerId }, null, 2), { access: 'private', addRandomSuffix: false })
+    if (user.role !== 'manager') {
+      const updated: User = { ...user, role: 'manager' }
+      await putJson(usersKey(updated.id), updated)
+    }
+  }
 }
 
 export async function findBlob(key: string) {
