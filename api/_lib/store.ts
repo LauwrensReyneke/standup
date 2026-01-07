@@ -221,11 +221,10 @@ export async function getOrCreateStandup(team: Team, date: string): Promise<{ do
     }
 
     const created = await putJson(key, doc)
-    const { etag } = await readJson<StandupDoc>(created.url)
-    return { doc, etag, url: created.url }
+    return { doc, etag: String(doc.version), url: created.url }
   }
 
-  const { data, etag } = await readJson<StandupDoc>(blob.url)
+  const { data } = await readJson<StandupDoc>(blob.url)
 
   // Ensure member list is carried over (manager may have changed team membership)
   const current = new Map(data.rows.map((r) => [r.userId, r]))
@@ -243,7 +242,7 @@ export async function getOrCreateStandup(team: Team, date: string): Promise<{ do
   }
   data.rows = rows
 
-  return { doc: data, etag, url: blob.url }
+  return { doc: data, etag: String(data.version), url: blob.url }
 }
 
 export async function updateStandupEntry(opts: {
@@ -280,17 +279,19 @@ export async function updateStandupEntry(opts: {
     blockers: opts.blockers,
     status: calcStatus(opts.yesterday, opts.today, opts.blockers),
   }
-  doc.version += 1
-  doc.updatedAt = nowIso()
 
-  try {
-    const putRes = await putJson(standupKey(team.id, date), doc, { ifMatch: opts.ifMatch })
-    const { etag } = await readJson<StandupDoc>(putRes.url)
-    return { doc, etag }
-  } catch (err: any) {
-    // If-Match failed => conflict
+  // ETag/If-Match is no longer enforced at the storage level.
+  // We keep the API contract but use a soft check based on doc.version.
+  const ifMatchVersion = Number(opts.ifMatch)
+  if (Number.isFinite(ifMatchVersion) && ifMatchVersion !== doc.version) {
     const e: any = new Error('Conflict')
     e.status = 409
     throw e
   }
+
+  doc.version += 1
+  doc.updatedAt = nowIso()
+
+  await putJson(standupKey(team.id, date), doc)
+  return { doc, etag: String(doc.version) }
 }
