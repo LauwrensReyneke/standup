@@ -22,7 +22,11 @@ type SessionPayload = {
 
 function base64url(input: Buffer | string) {
   const buf = Buffer.isBuffer(input) ? input : Buffer.from(input)
-  return buf.toString('base64').replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '')
+  return buf
+    .toString('base64')
+    .split('+').join('-')
+    .split('/').join('_')
+    .split('=').join('')
 }
 
 function sign(data: string, secret: string) {
@@ -40,7 +44,8 @@ function decode<T>(token: string, secret: string): T {
   if (!body || !sig) throw new Error('Invalid token')
   const expected = sign(body, secret)
   if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig))) throw new Error('Invalid token')
-  return JSON.parse(Buffer.from(body.replaceAll('-', '+').replaceAll('_', '/'), 'base64').toString('utf8')) as T
+  const b64 = body.split('-').join('+').split('_').join('/')
+  return JSON.parse(Buffer.from(b64, 'base64').toString('utf8')) as T
 }
 
 export function makeMagicToken(email: string) {
@@ -90,4 +95,3 @@ export function sessionCookie(value: string | null) {
     maxAge: value ? 60 * 60 * 24 * 30 : 0,
   })
 }
-

@@ -37,7 +37,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token = makeMagicToken(email)
   const verifyUrl = `${body.data.redirectTo || ''}?token=${encodeURIComponent(token)}`
 
-  const mode = process.env.DEV_EMAIL_MODE || 'provider'
+  const modeRaw = (process.env.DEV_EMAIL_MODE || '').toLowerCase()
+  const mode = modeRaw === 'send' ? 'provider' : modeRaw || 'provider'
   if (mode === 'log') {
     console.log(`[magic-link] ${email} -> ${verifyUrl}`)
     return json(res, 200, { ok: true })
