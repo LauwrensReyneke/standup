@@ -45,11 +45,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const resendKey = process.env.RESEND_API_KEY
-  const from = process.env.EMAIL_FROM
-  if (!resendKey || !from) {
-    console.log(`[magic-link] Missing RESEND_API_KEY/EMAIL_FROM. Link for ${email}: ${verifyUrl}`)
+  const from = process.env.EMAIL_FROM || 'STRICT Standups <noreply@updates.r-e-d.online>'
+  if (!resendKey) {
+    console.log(`[magic-link] Missing RESEND_API_KEY. Link for ${email}: ${verifyUrl}`)
     return json(res, 200, { ok: true })
   }
+
+  const text = `Sign in to STRICT Standups:\n\n${verifyUrl}\n\nThis link expires in 15 minutes. If you didn’t request this email, you can ignore it.`
+  const html = `
+    <p>Sign in to STRICT Standups:</p>
+    <p><a href="${verifyUrl}">Sign in</a></p>
+    <p style="color:#64748b;font-size:12px;line-height:1.4">
+      This link expires in 15 minutes. If you didn’t request this email, you can ignore it.
+    </p>
+  `.trim()
 
   const resp = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -60,8 +69,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     body: JSON.stringify({
       from,
       to: [email],
-      subject: 'Your Standup magic link',
-      html: `<p>Sign in to STRICT Standups:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p><p>This link expires in 15 minutes.</p>`,
+      subject: 'Your Standup sign-in link',
+      text,
+      html,
+      // Many gateways are more suspicious of auth emails with link tracking enabled.
+      // Disabling it is a good first knob when troubleshooting Mimecast policy rejections.
+      tracking: { click: false, open: false },
     }),
   })
 
