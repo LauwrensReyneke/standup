@@ -45,15 +45,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const resendKey = process.env.RESEND_API_KEY
-  const from = process.env.EMAIL_FROM || 'STRICT Standups <noreply@updates.r-e-d.online>'
+  const from = process.env.EMAIL_FROM || 'Standups <noreply@updates.r-e-d.online>'
   if (!resendKey) {
     console.log(`[magic-link] Missing RESEND_API_KEY. Link for ${email}: ${verifyUrl}`)
     return json(res, 200, { ok: true })
   }
 
-  const text = `Sign in to STRICT Standups:\n\n${verifyUrl}\n\nThis link expires in 15 minutes. If you didn’t request this email, you can ignore it.`
+  const text = `Sign in to Standups:\n\n${verifyUrl}\n\nThis link expires in 15 minutes. If you didn’t request this email, you can ignore it.`
   const html = `
-    <p>Sign in to STRICT Standups:</p>
+    <p>Sign in to Standups:</p>
     <p><a href="${verifyUrl}">Sign in</a></p>
     <p style="color:#64748b;font-size:12px;line-height:1.4">
       This link expires in 15 minutes. If you didn’t request this email, you can ignore it.
