@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { z } from 'zod'
-import { badMethod, json } from '../_lib/http'
-import { readSession } from '../_lib/auth'
-import { getTeam, saveTeam } from '../_lib/store'
+import { badMethod, json } from '../_lib/http.js'
+import { readSession } from '../_lib/auth.js'
+import { getTeam, saveTeam } from '../_lib/store.js'
 
 const Body = z.object({ standupCutoffTime: z.string().regex(/^\d{2}:\d{2}$/) })
 
@@ -29,4 +29,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     members: [],
   })
 }
-

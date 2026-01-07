@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { z } from 'zod'
-import { badMethod, json } from '../_lib/http'
-import { ensureBootstrapTeamAndManager, getUserByEmail, upsertUser } from '../_lib/store'
-import { makeMagicToken } from '../_lib/auth'
-import { isEmailAllowed } from '../_lib/allowlist'
+import { badMethod, json } from '../_lib/http.js'
+import { ensureBootstrapTeamAndManager, getUserByEmail, upsertUser } from '../_lib/store.js'
+import { makeMagicToken } from '../_lib/auth.js'
+import { isEmailAllowed } from '../_lib/allowlist.js'
 
 const Body = z.object({
   email: z.string().email(),

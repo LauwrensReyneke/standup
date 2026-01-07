@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import dayjs from 'dayjs'
 import { list } from '@vercel/blob'
-import { badMethod, json } from '../_lib/http'
-import { readSession } from '../_lib/auth'
-import { PREFIX, getTeam } from '../_lib/store'
-import { readJson } from '../_lib/blob'
+import { badMethod, json } from '../_lib/http.js'
+import { readSession } from '../_lib/auth.js'
+import { PREFIX, getTeam } from '../_lib/store.js'
+import { readJson } from '../_lib/blob.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return badMethod(req, res, ['GET'])
@@ -40,4 +40,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   return json(res, 200, { days })
 }
-

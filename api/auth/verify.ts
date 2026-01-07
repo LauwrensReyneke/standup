@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { z } from 'zod'
-import { badMethod, json } from '../_lib/http'
-import { verifyMagicToken, makeSessionToken, sessionCookie } from '../_lib/auth'
-import { ensureBootstrapTeamAndManager, getUserByEmail } from '../_lib/store'
-import { isEmailAllowed } from '../_lib/allowlist'
+import { badMethod, json } from '../_lib/http.js'
+import { verifyMagicToken, makeSessionToken, sessionCookie } from '../_lib/auth.js'
+import { ensureBootstrapTeamAndManager, getUserByEmail } from '../_lib/store.js'
+import { isEmailAllowed } from '../_lib/allowlist.js'
 
 const Body = z.object({ token: z.string().min(10) })
 

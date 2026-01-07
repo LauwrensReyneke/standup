@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { badMethod, json } from '../_lib/http'
-import { readSession, sessionCookie } from '../_lib/auth'
+import { badMethod, json } from '../_lib/http.js'
+import { readSession, sessionCookie } from '../_lib/auth.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Consolidated auth endpoints (Hobby plan function limit):

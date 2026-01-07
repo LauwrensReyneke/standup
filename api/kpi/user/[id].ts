@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { badMethod, json } from '../../_lib/http'
-import { readSession } from '../../_lib/auth'
+import { badMethod, json } from '../../_lib/http.js'
+import { readSession } from '../../_lib/auth.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return badMethod(req, res, ['GET'])
@@ -12,4 +12,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // This endpoint is kept to satisfy the contract and can be expanded later.
   return json(res, 200, { userId: req.query.id, message: 'Use /api/kpi/team for now' })
 }
-

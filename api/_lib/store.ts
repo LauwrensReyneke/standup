@@ -1,5 +1,5 @@
 import { list, put } from '@vercel/blob'
-import { readJson, putJson } from './blob'
+import { readJson, putJson } from './blob.js'
 import { nanoid } from 'nanoid'
 
 export const PREFIX = 'standup/v1'
@@ -247,4 +247,3 @@ export async function updateStandupEntry(opts: {
     throw e
   }
 }
-

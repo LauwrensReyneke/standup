@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import dayjs from 'dayjs'
-import { badMethod, json } from '../_lib/http'
-import { readSession } from '../_lib/auth'
-import { ensureBootstrapTeamAndManager, getOrCreateStandup, getTeam } from '../_lib/store'
+import { badMethod, json } from '../_lib/http.js'
+import { readSession } from '../_lib/auth.js'
+import { ensureBootstrapTeamAndManager, getOrCreateStandup, getTeam } from '../_lib/store.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return badMethod(req, res, ['GET'])
@@ -31,4 +31,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     rows: doc.rows,
   })
 }
-

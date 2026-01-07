@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import dayjs from 'dayjs'
 import { z } from 'zod'
-import { badMethod, json } from '../_lib/http'
-import { readSession } from '../_lib/auth'
-import { ensureBootstrapTeamAndManager, getTeam, updateStandupEntry } from '../_lib/store'
+import { badMethod, json } from '../_lib/http.js'
+import { readSession } from '../_lib/auth.js'
+import { ensureBootstrapTeamAndManager, getTeam, updateStandupEntry } from '../_lib/store.js'
 
 const Body = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -59,4 +59,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, e.status || 500, { error: e.message || 'Failed' })
   }
 }
-

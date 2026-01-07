@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { z } from 'zod'
 import { nanoid } from 'nanoid'
-import { badMethod, json } from '../_lib/http'
-import { readSession } from '../_lib/auth'
+import { badMethod, json } from '../_lib/http.js'
+import { readSession } from '../_lib/auth.js'
 import {
   ensureBootstrapTeamAndManager,
   getTeam,
@@ -11,8 +11,8 @@ import {
   saveTeam,
   getUserByEmail,
   upsertUser,
-} from '../_lib/store'
-import { readJson } from '../_lib/blob'
+} from '../_lib/store.js'
+import { readJson } from '../_lib/blob.js'
 
 const AddBody = z.object({ email: z.string().email(), name: z.string().min(1) })
 const RemoveBody = z.object({ userId: z.string().min(5) })

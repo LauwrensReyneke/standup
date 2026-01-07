@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import dayjs from 'dayjs'
 import { list } from '@vercel/blob'
-import { badMethod, json } from '../_lib/http'
-import { readSession } from '../_lib/auth'
-import { PREFIX, StandupDoc, StandupStatus, getTeam, usersKey, findBlob } from '../_lib/store'
-import { readJson } from '../_lib/blob'
+import { badMethod, json } from '../_lib/http.js'
+import { readSession } from '../_lib/auth.js'
+import { PREFIX, StandupDoc, StandupStatus, getTeam, usersKey, findBlob } from '../_lib/store.js'
+import { readJson } from '../_lib/blob.js'
 
 function score(status: StandupStatus) {
   if (status === 'prepared') return 100
@@ -79,4 +79,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   return json(res, 200, { teamName: team.name, teamCompliancePercent, users })
 }
-
