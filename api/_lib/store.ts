@@ -1,4 +1,4 @@
-import { list, put } from '@vercel/blob'
+import { list } from '@vercel/blob'
 import { readJson, putJson } from './blob.js'
 import { nanoid } from 'nanoid'
 
@@ -81,8 +81,30 @@ export async function ensureBootstrapTeamAndManager(opts?: { email?: string; nam
   const name = process.env.BOOTSTRAP_MANAGER_NAME || opts?.name || 'Manager'
   const teamName = process.env.BOOTSTRAP_TEAM_NAME || 'Engineering'
 
+  // If env enforces a specific manager email, require it to be allowlisted.
+  // This prevents accidentally making an arbitrary email an admin.
+  if ((email === bootstrapEmail || email === initialManagerEmail) && process.env.INITIAL_MANAGER_EMAIL) {
+    // Lazy import to avoid circular deps; allowlist lives in a different module.
+    const { isEmailAllowed } = await import('./allowlist.js')
+    if (!isEmailAllowed(email)) return
+  }
+
   const mappingKey = teamByEmailKey(email)
-  const mappingBlob = await findBlob(mappingKey)
+  let mappingBlob = await findBlob(mappingKey)
+
+  // If the mapping is missing, the user might exist without the email mapping.
+  // Try to find any existing user blob with a matching email.
+  if (!mappingBlob) {
+    const existingUsers = await list({ prefix: `${PREFIX}/users/`, limit: 200 })
+    for (const b of existingUsers.blobs) {
+      const { data: u } = await readJson<User>(b.url)
+      if ((u.email || '').toLowerCase() === email) {
+        await putJson(mappingKey, { userId: u.id })
+        mappingBlob = await findBlob(mappingKey)
+        break
+      }
+    }
+  }
 
   // If user doesn't exist yet, create a new team + manager.
   if (!mappingBlob) {
@@ -199,7 +221,7 @@ export async function getOrCreateStandup(team: Team, date: string): Promise<{ do
     }
 
     const created = await putJson(key, doc)
-    const etag = created.etag || ''
+    const { etag } = await readJson<StandupDoc>(created.url)
     return { doc, etag, url: created.url }
   }
 
@@ -263,7 +285,8 @@ export async function updateStandupEntry(opts: {
 
   try {
     const putRes = await putJson(standupKey(team.id, date), doc, { ifMatch: opts.ifMatch })
-    return { doc, etag: putRes.etag || '' }
+    const { etag } = await readJson<StandupDoc>(putRes.url)
+    return { doc, etag }
   } catch (err: any) {
     // If-Match failed => conflict
     const e: any = new Error('Conflict')
