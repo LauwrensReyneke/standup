@@ -60,7 +60,7 @@ async function doLogout() {
           <div class="h-10 w-10 rounded-2xl bg-white/70 shadow-sm ring-1 ring-slate-900/10"></div>
           <div>
             <div class="text-sm font-semibold tracking-tight text-slate-900">STRICT Standups</div>
-            <div class="text-xs text-slate-500">Manager-first written accountability</div>
+            <div class="text-xs text-slate-500">Daily Standup - data capturing</div>
           </div>
         </div>
 

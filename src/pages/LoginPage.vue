@@ -59,9 +59,9 @@ async function submit() {
         </button>
       </form>
 
-      <p class="mt-6 text-xs text-slate-500">
-        Tip: in dev you can enable <span class="font-mono">DEV_EMAIL_MODE=log</span> to print the link to server logs.
-      </p>
+<!--      <p class="mt-6 text-xs text-slate-500">-->
+<!--        Tip: in dev you can enable <span class="font-mono">DEV_EMAIL_MODE=log</span> to print the link to server logs.-->
+<!--      </p>-->
     </div>
   </div>
 </template>

@@ -6,7 +6,7 @@ export const ALLOWED_EMAILS = new Set(
     'bongi@r-e-d.online',
     'kaylen@r-e-d.online',
     'paul@r-e-d.online',
-    'ruben@r-e-d-solutions.co.za',
+    'ruben@red-solutions.co.za',
   ].map((e) => e.toLowerCase()),
 )
 
