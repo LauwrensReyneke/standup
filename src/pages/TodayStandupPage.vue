@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import dayjs from 'dayjs'
 import { apiFetch, ApiError } from '../lib/apiClient'
-import MarkdownView from '../components/MarkdownView.vue'
 import { calcStatus, statusLabel, type StandupStatus } from '../lib/standup'
 
 type Row = {
@@ -84,6 +83,8 @@ const sortedRows = computed(() => {
 })
 
 onMounted(load)
+
+const MarkdownEditor = defineAsyncComponent(() => import('../components/MarkdownEditor.vue'))
 </script>
 
 <template>
@@ -132,42 +133,27 @@ onMounted(load)
               </td>
 
               <td class="td">
-                <textarea
+                <MarkdownEditor
                   :disabled="!data.editable"
-                  :value="row.yesterday"
-                  class="textarea"
-                  placeholder="What did you ship yesterday?"
-                  @input="data.rows[data.rows.findIndex(r => r.userId === row.userId)] = updateRow(row, { yesterday: ($event.target as HTMLTextAreaElement).value })"
+                  :model-value="row.yesterday"
+                  @update:model-value="(v) => (data.rows[data.rows.findIndex((r) => r.userId === row.userId)] = updateRow(row, { yesterday: v }))"
                 />
-                <div class="mt-2 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-900/10">
-                  <MarkdownView :value="row.yesterday" empty="Preview" />
-                </div>
               </td>
 
               <td class="td">
-                <textarea
+                <MarkdownEditor
                   :disabled="!data.editable"
-                  :value="row.today"
-                  class="textarea"
-                  placeholder="What will you do today?"
-                  @input="data.rows[data.rows.findIndex(r => r.userId === row.userId)] = updateRow(row, { today: ($event.target as HTMLTextAreaElement).value })"
+                  :model-value="row.today"
+                  @update:model-value="(v) => (data.rows[data.rows.findIndex((r) => r.userId === row.userId)] = updateRow(row, { today: v }))"
                 />
-                <div class="mt-2 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-900/10">
-                  <MarkdownView :value="row.today" empty="Preview" />
-                </div>
               </td>
 
               <td class="td">
-                <textarea
+                <MarkdownEditor
                   :disabled="!data.editable"
-                  :value="row.blockers"
-                  class="textarea"
-                  placeholder="Blockers (or 'None')"
-                  @input="data.rows[data.rows.findIndex(r => r.userId === row.userId)] = updateRow(row, { blockers: ($event.target as HTMLTextAreaElement).value })"
+                  :model-value="row.blockers"
+                  @update:model-value="(v) => (data.rows[data.rows.findIndex((r) => r.userId === row.userId)] = updateRow(row, { blockers: v }))"
                 />
-                <div class="mt-2 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-900/10">
-                  <MarkdownView :value="row.blockers" empty="Preview" />
-                </div>
               </td>
 
               <td class="td">
