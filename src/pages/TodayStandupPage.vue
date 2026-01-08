@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import dayjs from 'dayjs'
 import { apiFetch, ApiError } from '../lib/apiClient'
 import { calcStatus, statusLabel, type StandupStatus } from '../lib/standup'
@@ -83,8 +83,6 @@ const sortedRows = computed(() => {
 })
 
 onMounted(load)
-
-const MarkdownEditor = defineAsyncComponent(() => import('../components/MarkdownEditor.vue'))
 </script>
 
 <template>
@@ -133,26 +131,32 @@ const MarkdownEditor = defineAsyncComponent(() => import('../components/Markdown
               </td>
 
               <td class="td">
-                <MarkdownEditor
+                <textarea
                   :disabled="!data.editable"
-                  :model-value="row.yesterday"
-                  @update:model-value="(v) => (data.rows[data.rows.findIndex((r) => r.userId === row.userId)] = updateRow(row, { yesterday: v }))"
+                  :value="row.yesterday"
+                  class="textarea"
+                  placeholder="- finished [BAC-125](https://...)"
+                  @input="data.rows[data.rows.findIndex((r) => r.userId === row.userId)] = updateRow(row, { yesterday: ($event.target as HTMLTextAreaElement).value })"
                 />
               </td>
 
               <td class="td">
-                <MarkdownEditor
+                <textarea
                   :disabled="!data.editable"
-                  :model-value="row.today"
-                  @update:model-value="(v) => (data.rows[data.rows.findIndex((r) => r.userId === row.userId)] = updateRow(row, { today: v }))"
+                  :value="row.today"
+                  class="textarea"
+                  placeholder="- ship X\n- review PRs"
+                  @input="data.rows[data.rows.findIndex((r) => r.userId === row.userId)] = updateRow(row, { today: ($event.target as HTMLTextAreaElement).value })"
                 />
               </td>
 
               <td class="td">
-                <MarkdownEditor
+                <textarea
                   :disabled="!data.editable"
-                  :model-value="row.blockers"
-                  @update:model-value="(v) => (data.rows[data.rows.findIndex((r) => r.userId === row.userId)] = updateRow(row, { blockers: v }))"
+                  :value="row.blockers"
+                  class="textarea"
+                  placeholder="None"
+                  @input="data.rows[data.rows.findIndex((r) => r.userId === row.userId)] = updateRow(row, { blockers: ($event.target as HTMLTextAreaElement).value })"
                 />
               </td>
 

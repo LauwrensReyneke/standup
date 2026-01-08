@@ -17,7 +17,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   let email: string
   try {
-    email = verifyMagicToken(body.data.token).email
+    email = (await verifyMagicToken(body.data.token)).email
   } catch (e: any) {
     return json(res, 401, { error: e?.message || 'Invalid token' })
   }
@@ -29,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const user = await getUserByEmail(email)
   if (!user) return json(res, 403, { error: 'User not found' })
 
-  const sessionToken = makeSessionToken({
+  const sessionToken = await makeSessionToken({
     id: user.id,
     email: user.email,
     name: user.name,

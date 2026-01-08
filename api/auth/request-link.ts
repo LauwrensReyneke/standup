@@ -34,7 +34,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Update email casing consistency
   await upsertUser({ ...user, email })
 
-  const token = makeMagicToken(email)
+  const token = await makeMagicToken(email)
   const verifyUrl = `${body.data.redirectTo || ''}?token=${encodeURIComponent(token)}`
 
   const modeRaw = (process.env.DEV_EMAIL_MODE || '').toLowerCase()

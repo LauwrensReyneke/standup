@@ -11,7 +11,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // we rewire /api/auth/logout by turning that file into a re-export.
 
   if (req.method === 'GET') {
-    const user = readSession(req)
+    const user = await readSession(req)
     return json(res, 200, { user })
   }
 
