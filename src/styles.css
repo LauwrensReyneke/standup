@@ -163,4 +163,32 @@ body {
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
+
+  .markdown {
+    @apply text-sm text-slate-800;
+  }
+
+  .markdown a {
+    @apply text-slate-900 underline decoration-slate-400/60 underline-offset-2 hover:decoration-slate-900;
+  }
+
+  .markdown ul {
+    @apply list-disc pl-5;
+  }
+
+  .markdown ol {
+    @apply list-decimal pl-5;
+  }
+
+  .markdown li {
+    @apply my-1;
+  }
+
+  .markdown code {
+    @apply rounded bg-slate-900/5 px-1 py-0.5 font-mono text-[12px];
+  }
+
+  .markdown p {
+    @apply my-1;
+  }
 }

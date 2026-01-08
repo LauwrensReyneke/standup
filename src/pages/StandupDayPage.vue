@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 import { apiFetch } from '../lib/apiClient'
+import MarkdownView from '../components/MarkdownView.vue'
 import { statusLabel, type StandupStatus } from '../lib/standup'
 
 type Row = {
@@ -42,8 +43,7 @@ async function load() {
 
   try {
     const date = dateParam.value
-    const res = await apiFetch<DayResponse>(`/api/standup/day?date=${encodeURIComponent(date)}`, { method: 'GET' })
-    data.value = res
+    data.value = await apiFetch<DayResponse>(`/api/standup/day?date=${encodeURIComponent(date)}`, { method: 'GET' })
   } catch (e: any) {
     error.value = e?.body?.error || 'Failed to load'
   } finally {
@@ -97,9 +97,9 @@ onMounted(load)
                 <div class="font-semibold text-slate-900">{{ row.name }}</div>
                 <div v-if="row.overriddenBy" class="mt-1 text-[11px] font-medium text-amber-700">Overridden by {{ row.overriddenBy }}</div>
               </td>
-              <td class="td"><div class="whitespace-pre-wrap text-sm text-slate-800">{{ row.yesterday || '—' }}</div></td>
-              <td class="td"><div class="whitespace-pre-wrap text-sm text-slate-800">{{ row.today || '—' }}</div></td>
-              <td class="td"><div class="whitespace-pre-wrap text-sm text-slate-800">{{ row.blockers || '—' }}</div></td>
+              <td class="td"><MarkdownView :value="row.yesterday" /></td>
+              <td class="td"><MarkdownView :value="row.today" /></td>
+              <td class="td"><MarkdownView :value="row.blockers" /></td>
               <td class="td">
                 <span
                   class="pill"

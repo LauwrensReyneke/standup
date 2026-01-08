@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import dayjs from 'dayjs'
 import { apiFetch, ApiError } from '../lib/apiClient'
+import MarkdownView from '../components/MarkdownView.vue'
 import { calcStatus, statusLabel, type StandupStatus } from '../lib/standup'
 
 type Row = {
@@ -55,7 +56,7 @@ async function save(row: Row) {
   saving.value = true
   saveError.value = null
   try {
-    const res = await apiFetch<TodayResponse>('/api/standup/update', {
+    data.value = await apiFetch<TodayResponse>('/api/standup/update', {
       method: 'PUT',
       headers: { 'if-match': data.value.etag },
       body: JSON.stringify({
@@ -66,7 +67,6 @@ async function save(row: Row) {
         blockers: row.blockers,
       }),
     })
-    data.value = res
   } catch (e: any) {
     if (e instanceof ApiError && e.status === 409) {
       saveError.value = 'Someone updated the standup. Please reload and try again.'
@@ -77,6 +77,11 @@ async function save(row: Row) {
     saving.value = false
   }
 }
+
+const sortedRows = computed(() => {
+  if (!data.value) return [] as Row[]
+  return [...data.value.rows].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
+})
 
 onMounted(load)
 </script>
@@ -120,7 +125,7 @@ onMounted(load)
           </thead>
 
           <tbody>
-            <tr v-for="(row, idx) in data.rows" :key="row.userId" class="tr">
+            <tr v-for="row in sortedRows" :key="row.userId" class="tr">
               <td class="td">
                 <div class="font-semibold text-slate-900">{{ row.name }}</div>
                 <div v-if="row.overriddenBy" class="mt-1 text-[11px] font-medium text-amber-700">Overridden by {{ row.overriddenBy }}</div>
@@ -132,8 +137,11 @@ onMounted(load)
                   :value="row.yesterday"
                   class="textarea"
                   placeholder="What did you ship yesterday?"
-                  @input="data.rows[idx] = updateRow(row, { yesterday: ($event.target as HTMLTextAreaElement).value })"
+                  @input="data.rows[data.rows.findIndex(r => r.userId === row.userId)] = updateRow(row, { yesterday: ($event.target as HTMLTextAreaElement).value })"
                 />
+                <div class="mt-2 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-900/10">
+                  <MarkdownView :value="row.yesterday" empty="Preview" />
+                </div>
               </td>
 
               <td class="td">
@@ -142,8 +150,11 @@ onMounted(load)
                   :value="row.today"
                   class="textarea"
                   placeholder="What will you do today?"
-                  @input="data.rows[idx] = updateRow(row, { today: ($event.target as HTMLTextAreaElement).value })"
+                  @input="data.rows[data.rows.findIndex(r => r.userId === row.userId)] = updateRow(row, { today: ($event.target as HTMLTextAreaElement).value })"
                 />
+                <div class="mt-2 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-900/10">
+                  <MarkdownView :value="row.today" empty="Preview" />
+                </div>
               </td>
 
               <td class="td">
@@ -152,8 +163,11 @@ onMounted(load)
                   :value="row.blockers"
                   class="textarea"
                   placeholder="Blockers (or 'None')"
-                  @input="data.rows[idx] = updateRow(row, { blockers: ($event.target as HTMLTextAreaElement).value })"
+                  @input="data.rows[data.rows.findIndex(r => r.userId === row.userId)] = updateRow(row, { blockers: ($event.target as HTMLTextAreaElement).value })"
                 />
+                <div class="mt-2 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-900/10">
+                  <MarkdownView :value="row.blockers" empty="Preview" />
+                </div>
               </td>
 
               <td class="td">
