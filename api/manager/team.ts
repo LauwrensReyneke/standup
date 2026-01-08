@@ -50,7 +50,7 @@ async function fetchMembers(team: { memberUserIds: string[] }) {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   await ensureBootstrapTeamAndManager()
 
-  const viewer = readSession(req)
+  const viewer = await readSession(req)
   if (!viewer) return json(res, 401, { error: 'Unauthorized' })
   if (viewer.role !== 'manager') return json(res, 403, { error: 'Manager only' })
 
