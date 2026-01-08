@@ -5,7 +5,7 @@ import { readSession } from '../../_lib/auth.js'
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return badMethod(req, res, ['GET'])
 
-  const viewer = readSession(req)
+  const viewer = await readSession(req)
   if (!viewer) return json(res, 401, { error: 'Unauthorized' })
 
   // For now, individual KPI details are provided by /api/kpi/team.

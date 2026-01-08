@@ -13,7 +13,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!viewer) return json(res, 401, { error: 'Unauthorized' })
 
   const team = (await getTeam(viewer.teamId)) || (await ensureTeamForViewer(viewer))
-  if (!team) return json(res, 404, { error: 'Team not found' })
+  if (!team) {
+    console.log('[team-not-found]', { viewerId: viewer.id, teamId: viewer.teamId })
+    return json(res, 404, { error: 'Team not found', teamId: viewer.teamId })
+  }
 
   const date = dayjs().format('YYYY-MM-DD')
   const cutoffAt = dayjs(`${date}T${team.standupCutoffTime}:00`).toISOString()
