@@ -40,7 +40,12 @@ onMounted(async () => {
 
     <div class="space-y-4">
       <div v-for="d in last10" :key="d.date" class="card p-6">
-        <div class="text-sm font-semibold text-slate-900">{{ dayjs(d.date).format('ddd, MMM D YYYY') }}</div>
+        <RouterLink
+          class="text-sm font-semibold text-slate-900 hover:underline"
+          :to="`/history/${encodeURIComponent(d.date)}`"
+        >
+          {{ dayjs(d.date).format('ddd, MMM D YYYY') }}
+        </RouterLink>
         <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div v-for="r in d.rows" :key="r.userId" class="rounded-2xl border border-slate-900/10 bg-white px-4 py-3 shadow-sm">
             <div class="flex items-center justify-between gap-3">
