@@ -4,12 +4,32 @@ import { nanoid } from 'nanoid'
 
 export const PREFIX = 'standup/v1'
 
+export type UserRole = 'manager' | 'member'
+
+export type UserMembership = {
+  teamId: string
+  role: UserRole
+  joinedAt: string
+}
+
 export type User = {
   id: string
   email: string
   name: string
-  role: 'manager' | 'member'
-  teamId: string
+  /**
+   * Legacy field (single-team); kept for backward compatibility.
+   * New code should use memberships + activeTeamId.
+   */
+  teamId?: string
+  /**
+   * Legacy field (global role); kept for backward compatibility.
+   * New code should use memberships[].role.
+   */
+  role?: UserRole
+
+  memberships?: UserMembership[]
+  activeTeamId?: string
+
   createdAt: string
   updatedAt: string
 }
@@ -19,6 +39,9 @@ export type Team = {
   name: string
   standupCutoffTime: string // "HH:mm"
   memberUserIds: string[]
+  createdByUserId?: string
+  /** Shareable code for managers to subscribe to this team */
+  teamCode?: string
   createdAt: string
   updatedAt: string
 }
@@ -48,11 +71,48 @@ function nowIso() {
   return new Date().toISOString()
 }
 
+function normalizeUser(raw: User): Required<Pick<User, 'memberships' | 'activeTeamId'>> & User {
+  const ts = nowIso()
+  const memberships = Array.isArray(raw.memberships) ? raw.memberships.filter((m) => m && m.teamId) : []
+
+  // Legacy migration: if teamId exists but memberships are missing/empty.
+  if (memberships.length === 0 && raw.teamId) {
+    memberships.push({ teamId: raw.teamId, role: (raw.role as UserRole) || 'member', joinedAt: raw.createdAt || ts })
+  }
+
+  const activeTeamId = raw.activeTeamId || raw.teamId || memberships[0]?.teamId || ''
+
+  return {
+    ...raw,
+    memberships,
+    activeTeamId,
+  }
+}
+
 export function calcStatus(y: string, t: string, b: string): StandupStatus {
   const filled = [y.trim(), t.trim(), b.trim()].filter(Boolean).length
   if (filled === 0) return 'missing'
   if (filled === 3) return 'prepared'
   return 'partial'
+}
+
+export function userTeamIds(user: User) {
+  const u = normalizeUser(user)
+  return u.memberships.map((m) => m.teamId)
+}
+
+export function getRoleForTeam(user: User, teamId: string): UserRole {
+  const u = normalizeUser(user)
+  return u.memberships.find((m) => m.teamId === teamId)?.role || (u.role as UserRole) || 'member'
+}
+
+export function isManagerForTeam(user: User, teamId: string) {
+  return getRoleForTeam(user, teamId) === 'manager'
+}
+
+export function ensureActiveTeamId(user: User) {
+  const u = normalizeUser(user)
+  return u.activeTeamId
 }
 
 export function usersKey(userId: string) {
@@ -126,6 +186,7 @@ export async function ensureBootstrapTeamAndManager(opts?: { email?: string; nam
       memberUserIds: [managerId],
       createdAt: ts,
       updatedAt: ts,
+      teamCode: nanoid(10),
     }
 
     const user: User = {
@@ -166,6 +227,7 @@ export async function ensureBootstrapTeamAndManager(opts?: { email?: string; nam
         memberUserIds: [user.id],
         createdAt: ts,
         updatedAt: ts,
+        teamCode: nanoid(10),
       }
 
       const updatedUser: User = { ...user, teamId, role: 'manager', updatedAt: ts }
@@ -201,13 +263,45 @@ export async function getUserByEmail(email: string): Promise<User | null> {
   const userDoc = await readJsonOrNull<User>(userBlob.url)
   if (!userDoc) return null
 
-  return userDoc.data
+  return normalizeUser(userDoc.data)
+}
+
+export async function getUserById(userId: string): Promise<User | null> {
+  const userBlob = await findBlob(usersKey(userId))
+  if (!userBlob) return null
+  const userDoc = await readJsonOrNull<User>(userBlob.url)
+  if (!userDoc) return null
+  return normalizeUser(userDoc.data)
 }
 
 export async function upsertUser(user: User) {
-  user.updatedAt = nowIso()
-  await putJson(usersKey(user.id), user)
-  await putJson(teamByEmailKey(user.email.toLowerCase()), { userId: user.id })
+  const u = normalizeUser(user)
+  u.updatedAt = nowIso()
+  // Keep legacy fields in sync for older code paths.
+  u.teamId = u.activeTeamId
+  u.role = getRoleForTeam(u, u.activeTeamId)
+
+  await putJson(usersKey(u.id), u)
+  await putJson(teamByEmailKey(u.email.toLowerCase()), { userId: u.id })
+}
+
+export async function updateUserProfile(userId: string, patch: { name?: string; email?: string }) {
+  const existing = await getUserById(userId)
+  if (!existing) return null
+
+  const updated: User = {
+    ...existing,
+    name: typeof patch.name === 'string' ? patch.name : existing.name,
+    email: typeof patch.email === 'string' ? patch.email.toLowerCase() : existing.email,
+  }
+
+  // If email changed, also update mapping key.
+  if (updated.email !== existing.email) {
+    await putJson(teamByEmailKey(updated.email.toLowerCase()), { userId: existing.id })
+  }
+
+  await upsertUser(updated)
+  return normalizeUser(updated)
 }
 
 export async function getTeam(teamId: string): Promise<Team | null> {
@@ -215,6 +309,117 @@ export async function getTeam(teamId: string): Promise<Team | null> {
   if (!blob) return null
   const { data } = await readJson<Team>(blob.url)
   return data
+}
+
+export async function createTeam(opts: { name: string; standupCutoffTime?: string; createdByUserId: string }) {
+  const ts = nowIso()
+  const teamId = nanoid()
+  const team: Team = {
+    id: teamId,
+    name: opts.name.trim(),
+    standupCutoffTime: (opts.standupCutoffTime || process.env.DEFAULT_STANDUP_CUTOFF || '09:30').trim(),
+    memberUserIds: [opts.createdByUserId],
+    createdByUserId: opts.createdByUserId,
+    teamCode: nanoid(10),
+    createdAt: ts,
+    updatedAt: ts,
+  }
+  await putJson(teamKey(teamId), team)
+  return team
+}
+
+export async function getTeamByCode(teamCode: string): Promise<Team | null> {
+  const code = (teamCode || '').trim()
+  if (!code) return null
+
+  // Brute-force scan; team count is expected to be small for this app.
+  // If it grows, we can add an index blob (standup/v1/team-code/<code>.json).
+  const listed = await list({ prefix: `${PREFIX}/teams/`, limit: 200 })
+  for (const b of listed.blobs) {
+    const { data: t } = await readJson<Team>(b.url)
+    if ((t.teamCode || '').trim() === code) return t
+  }
+  return null
+}
+
+export async function addUserToTeam(opts: { teamId: string; userId: string; role: UserRole }) {
+  const team = await getTeam(opts.teamId)
+  if (!team) return null
+
+  const user = await getUserById(opts.userId)
+  if (!user) return null
+
+  const ts = nowIso()
+  const u = normalizeUser(user)
+  if (!u.memberships.some((m) => m.teamId === opts.teamId)) {
+    u.memberships.push({ teamId: opts.teamId, role: opts.role, joinedAt: ts })
+  } else {
+    u.memberships = u.memberships.map((m) => (m.teamId === opts.teamId ? { ...m, role: opts.role } : m))
+  }
+
+  // Default active team if missing.
+  if (!u.activeTeamId) u.activeTeamId = opts.teamId
+
+  // Update team membership list.
+  if (!team.memberUserIds.includes(opts.userId)) team.memberUserIds.push(opts.userId)
+
+  await upsertUser(u)
+  await saveTeam(team)
+
+  return { team, user: normalizeUser(u) }
+}
+
+export async function removeUserFromTeam(opts: { teamId: string; userId: string }) {
+  const team = await getTeam(opts.teamId)
+  if (!team) return null
+
+  const user = await getUserById(opts.userId)
+  if (!user) return null
+
+  const u = normalizeUser(user)
+  u.memberships = u.memberships.filter((m) => m.teamId !== opts.teamId)
+
+  team.memberUserIds = team.memberUserIds.filter((id) => id !== opts.userId)
+
+  // If active team removed, pick another.
+  if (u.activeTeamId === opts.teamId) {
+    u.activeTeamId = u.memberships[0]?.teamId || ''
+  }
+
+  await upsertUser(u)
+  await saveTeam(team)
+
+  return { team, user: normalizeUser(u) }
+}
+
+export async function setUserRoleForTeam(opts: { teamId: string; userId: string; role: UserRole }) {
+  const user = await getUserById(opts.userId)
+  if (!user) return null
+
+  const u = normalizeUser(user)
+  const ts = nowIso()
+  if (!u.memberships.some((m) => m.teamId === opts.teamId)) {
+    u.memberships.push({ teamId: opts.teamId, role: opts.role, joinedAt: ts })
+  } else {
+    u.memberships = u.memberships.map((m) => (m.teamId === opts.teamId ? { ...m, role: opts.role } : m))
+  }
+  await upsertUser(u)
+  return normalizeUser(u)
+}
+
+export async function listTeamsForUser(userId: string): Promise<Team[]> {
+  const user = await getUserById(userId)
+  if (!user) return []
+  const u = normalizeUser(user)
+
+  const teams: Team[] = []
+  for (const m of u.memberships) {
+    const t = await getTeam(m.teamId)
+    if (t) teams.push(t)
+  }
+
+  teams.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
+  return teams
 }
 
 export async function saveTeam(team: Team) {
@@ -227,7 +432,8 @@ export async function saveTeam(team: Team) {
  * If the team is missing, create a new team and attach the user to it.
  */
 export async function ensureTeamForUser(user: Pick<User, 'id' | 'email' | 'teamId'> & { name?: string }): Promise<Team | null> {
-  const existing = user.teamId ? await getTeam(user.teamId) : null
+  const u = normalizeUser(user as User)
+  const existing = u.activeTeamId ? await getTeam(u.activeTeamId) : null
   if (existing) return existing
 
   const ts = nowIso()
@@ -237,21 +443,27 @@ export async function ensureTeamForUser(user: Pick<User, 'id' | 'email' | 'teamI
     id: teamId,
     name: process.env.BOOTSTRAP_TEAM_NAME || 'Engineering',
     standupCutoffTime: process.env.DEFAULT_STANDUP_CUTOFF || '09:30',
-    memberUserIds: [user.id],
+    memberUserIds: [u.id],
+    createdByUserId: u.id,
     createdAt: ts,
     updatedAt: ts,
+    teamCode: nanoid(10),
   }
 
   await putJson(teamKey(teamId), team)
 
   // Update user record to point to the recreated team (best-effort).
-  const uBlob = await findBlob(usersKey(user.id))
+  const uBlob = await findBlob(usersKey(u.id))
   if (uBlob) {
     const uDoc = await readJsonOrNull<User>(uBlob.url)
     if (uDoc) {
-      const updated: User = { ...uDoc.data, teamId, updatedAt: ts }
-      await putJson(usersKey(updated.id), updated)
-      await putJson(teamByEmailKey(updated.email.toLowerCase()), { userId: updated.id })
+      const normalized = normalizeUser(uDoc.data)
+      normalized.activeTeamId = teamId
+      normalized.teamId = teamId
+      if (!normalized.memberships.some((m) => m.teamId === teamId)) {
+        normalized.memberships.push({ teamId, role: getRoleForTeam(normalized, teamId), joinedAt: ts })
+      }
+      await upsertUser(normalized)
     }
   }
 
@@ -362,46 +574,43 @@ export async function updateStandupEntry(opts: {
   return { doc, etag: String(doc.version) }
 }
 
-export async function ensureTeamForViewer(viewer: { id: string; teamId: string; role?: 'manager' | 'member' }) {
+export async function ensureTeamForViewer(viewer: { id: string; teamId: string; role?: 'manager' | 'member'; activeTeamId?: string }) {
   if (!viewer?.id) return null
 
+  // Prefer activeTeamId when present.
+  const teamId = viewer.activeTeamId || viewer.teamId
+
   // If the team exists, nothing to do.
-  const existing = viewer.teamId ? await getTeam(viewer.teamId) : null
+  const existing = teamId ? await getTeam(teamId) : null
   if (existing) return existing
 
   // Attempt to load the user record.
   const userBlob = await findBlob(usersKey(viewer.id))
   if (!userBlob) return null
-  const { data: user } = await readJson<User>(userBlob.url)
+  const { data: raw } = await readJson<User>(userBlob.url)
+  const user = normalizeUser(raw)
 
   // If the user's team exists, nothing to do.
-  const existingForUser = user.teamId ? await getTeam(user.teamId) : null
+  const existingForUser = user.activeTeamId ? await getTeam(user.activeTeamId) : null
   if (existingForUser) return existingForUser
 
   // Repair: create a new team, attach this user.
-  const teamId = nanoid()
-  const ts = nowIso()
-
-  const team: Team = {
-    id: teamId,
+  const repaired = await createTeam({
     name: process.env.BOOTSTRAP_TEAM_NAME || 'Engineering',
     standupCutoffTime: process.env.DEFAULT_STANDUP_CUTOFF || '09:30',
-    memberUserIds: [user.id],
-    createdAt: ts,
-    updatedAt: ts,
-  }
+    createdByUserId: user.id,
+  })
 
-  const updatedUser: User = {
-    ...user,
-    teamId,
-    // Keep role as-is unless caller passed manager; avoids accidental privilege changes.
-    role: viewer.role === 'manager' ? 'manager' : user.role,
-    updatedAt: ts,
-  }
+  // Attach user to repaired team.
+  const role: UserRole = viewer.role === 'manager' ? 'manager' : getRoleForTeam(user, user.activeTeamId || user.teamId || '')
+  const u = normalizeUser(user)
+  u.activeTeamId = repaired.id
+  u.teamId = repaired.id
+  u.role = role
+  u.memberships = [{ teamId: repaired.id, role, joinedAt: nowIso() }]
 
-  await putJson(teamKey(teamId), team)
-  await putJson(usersKey(updatedUser.id), updatedUser)
-  await putJson(teamByEmailKey(updatedUser.email.toLowerCase()), { userId: updatedUser.id })
+  await upsertUser(u)
 
-  return team
+  return repaired
 }
+

@@ -12,10 +12,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const viewer = await readSession(req)
   if (!viewer) return json(res, 401, { error: 'Unauthorized' })
 
-  const team = (await getTeam(viewer.teamId)) || (await ensureTeamForViewer(viewer))
+  const teamId = viewer.activeTeamId || viewer.teamId
+  const team = (await getTeam(teamId)) || (await ensureTeamForViewer(viewer))
   if (!team) {
-    console.log('[team-not-found]', { viewerId: viewer.id, teamId: viewer.teamId })
-    return json(res, 404, { error: 'Team not found', teamId: viewer.teamId })
+    console.log('[team-not-found]', { viewerId: viewer.id, teamId })
+    return json(res, 404, { error: 'Team not found', teamId })
   }
 
   const limit = Math.min(Number(req.query.limit || 14), 60)

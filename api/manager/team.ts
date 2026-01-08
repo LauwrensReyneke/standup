@@ -3,16 +3,7 @@ import { z } from 'zod'
 import { nanoid } from 'nanoid'
 import { badMethod, json } from '../_lib/http.js'
 import { readSession } from '../_lib/auth.js'
-import {
-  ensureBootstrapTeamAndManager,
-  ensureTeamForViewer,
-  getTeam,
-  usersKey,
-  findBlob,
-  saveTeam,
-  getUserByEmail,
-  upsertUser,
-} from '../_lib/store.js'
+import { ensureBootstrapTeamAndManager, ensureTeamForViewer, getTeam, usersKey, findBlob, saveTeam, getUserByEmail, upsertUser, getRoleForTeam, addUserToTeam, removeUserFromTeam } from '../_lib/store.js'
 import { readJson } from '../_lib/blob.js'
 
 const AddBody = z.object({ email: z.string().email(), name: z.string().min(1) })
@@ -20,13 +11,13 @@ const RemoveBody = z.object({ userId: z.string().min(5) })
 const UpdateTeamBody = z.object({ teamName: z.string().min(1).max(80) })
 const CutoffBody = z.object({ standupCutoffTime: z.string().regex(/^\d{2}:\d{2}$/) })
 
-async function fetchMembers(team: { memberUserIds: string[] }) {
+async function fetchMembers(teamId: string, team: { memberUserIds: string[] }) {
   const members = [] as any[]
   for (const uid of team.memberUserIds) {
     const b = await findBlob(usersKey(uid))
     if (!b) continue
     const { data } = await readJson<any>(b.url)
-    members.push({ userId: data.id, name: data.name, email: data.email, role: data.role })
+    members.push({ userId: data.id, name: data.name, email: data.email, role: getRoleForTeam(data, teamId) })
   }
   members.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
   return members
@@ -42,12 +33,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Self-heal: if the session/user references a missing team blob, recreate it.
   await ensureTeamForViewer(viewer)
 
-  const team = await getTeam(viewer.teamId)
+  const teamId = viewer.activeTeamId || viewer.teamId
+  const team = await getTeam(teamId)
   if (!team) return json(res, 404, { error: 'Team not found' })
 
   // GET /api/manager/team
   if (req.method === 'GET') {
-    const members = await fetchMembers(team)
+    const members = await fetchMembers(teamId, team)
     return json(res, 200, {
       teamId: team.id,
       teamName: team.name,
@@ -65,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (teamNameBody.success) {
       team.name = teamNameBody.data.teamName.trim()
       await saveTeam(team)
-      const members = await fetchMembers(team)
+      const members = await fetchMembers(teamId, team)
       return json(res, 200, {
         teamId: team.id,
         teamName: team.name,
@@ -78,7 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (cutoffBody.success) {
       team.standupCutoffTime = cutoffBody.data.standupCutoffTime
       await saveTeam(team)
-      const members = await fetchMembers(team)
+      const members = await fetchMembers(teamId, team)
       return json(res, 200, {
         teamId: team.id,
         teamName: team.name,
@@ -116,7 +108,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!team.memberUserIds.includes(user.id)) team.memberUserIds.push(user.id)
     await saveTeam(team)
 
-    const members = await fetchMembers(team)
+    await addUserToTeam({ teamId: team.id, userId: user.id, role: 'member' })
+
+    const members = await fetchMembers(teamId, team)
     return json(res, 200, {
       teamId: team.id,
       teamName: team.name,
@@ -133,7 +127,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     team.memberUserIds = team.memberUserIds.filter((id) => id !== body.data.userId)
     await saveTeam(team)
 
-    const members = await fetchMembers(team)
+    await removeUserFromTeam({ teamId: team.id, userId: body.data.userId })
+
+    const members = await fetchMembers(teamId, team)
     return json(res, 200, {
       teamId: team.id,
       teamName: team.name,

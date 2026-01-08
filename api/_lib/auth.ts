@@ -7,8 +7,14 @@ export type SessionUser = {
   id: string
   email: string
   name: string
+  /** Legacy global role (kept for backward compatibility) */
   role: 'manager' | 'member'
+  /** Legacy single team (kept for backward compatibility) */
   teamId: string
+
+  /** Multi-team fields */
+  activeTeamId?: string
+  memberships?: Array<{ teamId: string; role: 'manager' | 'member' }>
 }
 
 type MagicTokenPayload = {

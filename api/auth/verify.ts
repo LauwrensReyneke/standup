@@ -33,12 +33,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     id: user.id,
     email: user.email,
     name: user.name,
-    role: user.role,
-    teamId: user.teamId,
+    role: (user.role as any) || 'member',
+    teamId: (user.teamId as any) || user.activeTeamId || '',
+    activeTeamId: user.activeTeamId || user.teamId || '',
+    memberships: (user.memberships || []).map((m) => ({ teamId: m.teamId, role: m.role })),
   })
 
   res.setHeader('set-cookie', sessionCookie(sessionToken))
   return json(res, 200, {
-    user: { id: user.id, email: user.email, name: user.name, role: user.role, teamId: user.teamId },
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: (user.role as any) || 'member',
+      teamId: (user.teamId as any) || user.activeTeamId || '',
+      activeTeamId: user.activeTeamId || user.teamId || '',
+      memberships: (user.memberships || []).map((m) => ({ teamId: m.teamId, role: m.role })),
+    },
   })
 }

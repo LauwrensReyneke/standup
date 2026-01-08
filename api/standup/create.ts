@@ -12,7 +12,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const viewer = await readSession(req)
   if (!viewer) return json(res, 401, { error: 'Unauthorized' })
 
-  const team = (await getTeam(viewer.teamId)) || (await ensureTeamForViewer(viewer))
+  const teamId = viewer.activeTeamId || viewer.teamId
+  const team = (await getTeam(teamId)) || (await ensureTeamForViewer(viewer))
   if (!team) return json(res, 404, { error: 'Team not found' })
 
   const date = dayjs().format('YYYY-MM-DD')

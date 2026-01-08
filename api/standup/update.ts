@@ -22,7 +22,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!viewer) return json(res, 401, { error: 'Unauthorized' })
 
   // viewer is a concrete SessionUser here.
-  const team = (await getTeam(viewer.teamId)) || (await ensureTeamForViewer(viewer))
+  const teamId = viewer.activeTeamId || viewer.teamId
+  const team = (await getTeam(teamId)) || (await ensureTeamForViewer(viewer))
   if (!team) return json(res, 404, { error: 'Team not found' })
 
   const body = Body.safeParse(req.body)

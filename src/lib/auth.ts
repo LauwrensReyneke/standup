@@ -6,6 +6,9 @@ export type SessionUser = {
   name: string
   role: 'manager' | 'member'
   teamId: string
+
+  activeTeamId?: string
+  memberships?: Array<{ teamId: string; role: 'manager' | 'member' }>
 }
 
 export async function getSession(): Promise<{ user: SessionUser | null }> {

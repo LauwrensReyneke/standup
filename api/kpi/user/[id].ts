@@ -11,15 +11,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Hidden debug mode (used via Vercel rewrite from /api/debug/team).
   if (req.query.id === 'debug-team') {
-    const teamBlob = await findBlob(teamKey(viewer.teamId))
-    const team = await getTeam(viewer.teamId)
+    const teamId = viewer.activeTeamId || viewer.teamId
+    const teamBlob = await findBlob(teamKey(teamId))
+    const team = await getTeam(teamId)
     const userBlob = await findBlob(usersKey(viewer.id))
 
     return json(res, 200, {
       ok: true,
       viewer,
       keys: {
-        teamKey: teamKey(viewer.teamId),
+        teamKey: teamKey(teamId),
         userKey: usersKey(viewer.id),
       },
       blobs: {
