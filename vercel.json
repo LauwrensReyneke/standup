@@ -9,6 +9,10 @@
       "destination": "/api/manager/team"
     },
     {
+      "source": "/api/debug/team",
+      "destination": "/api/kpi/user/debug-team"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
