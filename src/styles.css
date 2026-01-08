@@ -216,12 +216,13 @@ body {
     text-fill-color: transparent;
   }
 
-  /* Ensure the rendered markdown doesn't capture clicks while editing */
+  /* View layer just paints; textarea handles all interaction */
   .markdown-editor-view {
     pointer-events: none;
   }
 
-  .markdown-editor-input:not(:focus) + .markdown-editor-view {
-    pointer-events: auto;
+  /* Make sure the markdown output doesn't get default <p> margins that shift layout */
+  .markdown-editor-view .markdown {
+    @apply m-0;
   }
 }

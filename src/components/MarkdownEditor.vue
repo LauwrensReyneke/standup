@@ -15,14 +15,15 @@ const html = computed(() => renderMarkdown(props.modelValue || ''))
     <div
       class="markdown-editor-view input min-h-16 whitespace-pre-wrap break-words"
       :class="props.disabled ? 'bg-slate-50 opacity-70' : 'bg-white'"
-      v-html="props.modelValue ? html : ''"
-    />
+    >
+      <div class="markdown" v-html="props.modelValue ? html : ''" />
+    </div>
 
     <!-- Editable textarea layer (caret + typing). Transparent text, visible caret. -->
     <textarea
       :disabled="props.disabled"
       :value="props.modelValue"
-      class="markdown-editor-input input absolute inset-0 min-h-16 resize-none bg-transparent caret-slate-900"
+      class="markdown-editor-input input absolute inset-0 z-10 min-h-16 resize-none bg-transparent caret-slate-900"
       :placeholder="props.placeholder"
       @focus="focused = true"
       @blur="focused = false"
@@ -32,7 +33,7 @@ const html = computed(() => renderMarkdown(props.modelValue || ''))
     <!-- Empty state placeholder rendered nicely when no content and not focused -->
     <div
       v-if="!props.modelValue && !focused"
-      class="pointer-events-none absolute inset-0 flex items-start p-4 text-sm text-slate-400"
+      class="pointer-events-none absolute inset-0 z-0 flex items-start p-4 text-sm text-slate-400"
     >
       {{ props.placeholder || '' }}
     </div>
