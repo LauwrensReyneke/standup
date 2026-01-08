@@ -5,10 +5,6 @@
       "destination": "/api/$1"
     },
     {
-      "source": "/api/manager/cutoff",
-      "destination": "/api/manager/team"
-    },
-    {
       "source": "/api/debug/team",
       "destination": "/api/kpi/user/debug-team"
     },
