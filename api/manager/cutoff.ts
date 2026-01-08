@@ -22,10 +22,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   team.standupCutoffTime = body.data.standupCutoffTime
   await saveTeam(team)
 
+  // Return full refreshed member list
+  const { usersKey, findBlob } = await import('../_lib/store.js')
+  const { readJson } = await import('../_lib/blob.js')
+  const members = [] as any[]
+  for (const uid of team.memberUserIds) {
+    const b = await findBlob(usersKey(uid))
+    if (!b) continue
+    const { data } = await readJson<any>(b.url)
+    members.push({ userId: data.id, name: data.name, email: data.email, role: data.role })
+  }
+
   return json(res, 200, {
     teamId: team.id,
     teamName: team.name,
     standupCutoffTime: team.standupCutoffTime,
-    members: [],
+    members,
   })
 }

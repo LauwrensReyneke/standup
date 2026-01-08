@@ -52,6 +52,19 @@ body {
 
   .btn {
     @apply inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold shadow-sm transition;
+    @apply cursor-pointer select-none;
+  }
+
+  .btn:focus-visible {
+    @apply outline-none ring-4 ring-slate-900/10;
+  }
+
+  .btn:active {
+    @apply translate-y-[1px];
+  }
+
+  .btn:disabled {
+    @apply cursor-not-allowed;
   }
 
   .btn-primary {

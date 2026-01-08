@@ -70,11 +70,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!team.memberUserIds.includes(user.id)) team.memberUserIds.push(user.id)
     await saveTeam(team)
 
+    // Return full refreshed member list
+    const members = [] as any[]
+    for (const uid of team.memberUserIds) {
+      const b = await findBlob(usersKey(uid))
+      if (!b) continue
+      const { data } = await readJson<any>(b.url)
+      members.push({ userId: data.id, name: data.name, email: data.email, role: data.role })
+    }
+
     return json(res, 200, {
       teamId: team.id,
       teamName: team.name,
       standupCutoffTime: team.standupCutoffTime,
-      members: [],
+      members,
     })
   }
 
@@ -86,11 +95,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     team.memberUserIds = team.memberUserIds.filter((id) => id !== body.data.userId)
     await saveTeam(team)
 
+    // Return full refreshed member list
+    const members = [] as any[]
+    for (const uid of team.memberUserIds) {
+      const b = await findBlob(usersKey(uid))
+      if (!b) continue
+      const { data } = await readJson<any>(b.url)
+      members.push({ userId: data.id, name: data.name, email: data.email, role: data.role })
+    }
+
     return json(res, 200, {
       teamId: team.id,
       teamName: team.name,
       standupCutoffTime: team.standupCutoffTime,
-      members: [],
+      members,
     })
   }
 
