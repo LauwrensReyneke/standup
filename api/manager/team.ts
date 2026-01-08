@@ -5,6 +5,7 @@ import { badMethod, json } from '../_lib/http.js'
 import { readSession } from '../_lib/auth.js'
 import {
   ensureBootstrapTeamAndManager,
+  ensureTeamForViewer,
   getTeam,
   usersKey,
   findBlob,
@@ -24,6 +25,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const viewer = readSession(req)
   if (!viewer) return json(res, 401, { error: 'Unauthorized' })
   if (viewer.role !== 'manager') return json(res, 403, { error: 'Manager only' })
+
+  // Self-heal: if the session/user references a missing team blob, recreate it.
+  await ensureTeamForViewer(viewer)
 
   const team = await getTeam(viewer.teamId)
   if (!team) return json(res, 404, { error: 'Team not found' })

@@ -319,3 +319,47 @@ export async function updateStandupEntry(opts: {
   await putJson(standupKey(team.id, date), doc)
   return { doc, etag: String(doc.version) }
 }
+
+export async function ensureTeamForViewer(viewer: { id: string; teamId: string; role?: 'manager' | 'member' }) {
+  if (!viewer?.id) return null
+
+  // If the team exists, nothing to do.
+  const existing = viewer.teamId ? await getTeam(viewer.teamId) : null
+  if (existing) return existing
+
+  // Attempt to load the user record.
+  const userBlob = await findBlob(usersKey(viewer.id))
+  if (!userBlob) return null
+  const { data: user } = await readJson<User>(userBlob.url)
+
+  // If the user's team exists, nothing to do.
+  const existingForUser = user.teamId ? await getTeam(user.teamId) : null
+  if (existingForUser) return existingForUser
+
+  // Repair: create a new team, attach this user.
+  const teamId = nanoid()
+  const ts = nowIso()
+
+  const team: Team = {
+    id: teamId,
+    name: process.env.BOOTSTRAP_TEAM_NAME || 'Engineering',
+    standupCutoffTime: process.env.DEFAULT_STANDUP_CUTOFF || '09:30',
+    memberUserIds: [user.id],
+    createdAt: ts,
+    updatedAt: ts,
+  }
+
+  const updatedUser: User = {
+    ...user,
+    teamId,
+    // Keep role as-is unless caller passed manager; avoids accidental privilege changes.
+    role: viewer.role === 'manager' ? 'manager' : user.role,
+    updatedAt: ts,
+  }
+
+  await putJson(teamKey(teamId), team)
+  await putJson(usersKey(updatedUser.id), updatedUser)
+  await putJson(teamByEmailKey(updatedUser.email.toLowerCase()), { userId: updatedUser.id })
+
+  return team
+}
