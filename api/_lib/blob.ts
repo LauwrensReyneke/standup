@@ -9,6 +9,14 @@ export async function readJson<T>(url: string): Promise<JsonRead<T>> {
   return { data }
 }
 
+export async function readJsonOrNull<T>(url: string): Promise<JsonRead<T> | null> {
+  const res = await fetch(url)
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`Failed to read blob: ${res.status}`)
+  const data = (await res.json()) as T
+  return { data }
+}
+
 export async function putJson(key: string, data: unknown) {
   return put(key, JSON.stringify(data, null, 2), {
     access: 'public',

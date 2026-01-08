@@ -1,5 +1,5 @@
 import { list } from '@vercel/blob'
-import { readJson, putJson } from './blob.js'
+import { readJson, readJsonOrNull, putJson } from './blob.js'
 import { nanoid } from 'nanoid'
 
 export const PREFIX = 'standup/v1'
@@ -191,11 +191,17 @@ export async function findBlob(key: string) {
 export async function getUserByEmail(email: string): Promise<User | null> {
   const mapping = await findBlob(teamByEmailKey(email.toLowerCase()))
   if (!mapping) return null
-  const { data } = await readJson<{ userId: string }>(mapping.url)
-  const userBlob = await findBlob(usersKey(data.userId))
+
+  const mappingDoc = await readJsonOrNull<{ userId: string }>(mapping.url)
+  if (!mappingDoc) return null
+
+  const userBlob = await findBlob(usersKey(mappingDoc.data.userId))
   if (!userBlob) return null
-  const user = await readJson<User>(userBlob.url)
-  return user.data
+
+  const userDoc = await readJsonOrNull<User>(userBlob.url)
+  if (!userDoc) return null
+
+  return userDoc.data
 }
 
 export async function upsertUser(user: User) {
