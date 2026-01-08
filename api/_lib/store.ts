@@ -83,7 +83,7 @@ export async function ensureBootstrapTeamAndManager(opts?: { email?: string; nam
 
   // If env enforces a specific manager email, require it to be allowlisted.
   // This prevents accidentally making an arbitrary email an admin.
-  if ((email === bootstrapEmail || email === initialManagerEmail) && process.env.INITIAL_MANAGER_EMAIL) {
+  if (email === bootstrapEmail || email === initialManagerEmail) {
     // Lazy import to avoid circular deps; allowlist lives in a different module.
     const { isEmailAllowed } = await import('./allowlist.js')
     if (!isEmailAllowed(email)) return
