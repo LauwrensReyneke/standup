@@ -83,7 +83,7 @@ async function doLogout() {
           </div>
           <button
             v-if="user"
-            class="rounded-xl bg-slate-900 px-3 py-2 text-sm text-white shadow-sm hover:bg-slate-800"
+            class="btn btn-primary rounded-xl px-3 py-2"
             @click="doLogout"
           >
             Logout
@@ -105,9 +105,7 @@ async function doLogout() {
           Or set <span class="font-mono text-slate-800">VITE_API_TARGET</span> to your backend URL.
         </div>
 
-        <button class="mt-4 rounded-2xl bg-slate-900 px-4 py-3 text-sm text-white shadow-sm hover:bg-slate-800" @click="refresh">
-          Retry
-        </button>
+        <button class="btn btn-primary mt-4" @click="refresh">Retry</button>
       </div>
 
       <div

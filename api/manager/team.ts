@@ -37,6 +37,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       members.push({ userId: data.id, name: data.name, email: data.email, role: data.role })
     }
 
+    members.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
+
     return json(res, 200, {
       teamId: team.id,
       teamName: team.name,
@@ -79,6 +81,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       members.push({ userId: data.id, name: data.name, email: data.email, role: data.role })
     }
 
+    members.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
+
     return json(res, 200, {
       teamId: team.id,
       teamName: team.name,
@@ -103,6 +107,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { data } = await readJson<any>(b.url)
       members.push({ userId: data.id, name: data.name, email: data.email, role: data.role })
     }
+
+    members.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
 
     return json(res, 200, {
       teamId: team.id,

@@ -73,6 +73,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     users.push({ userId: uid, name: u.name, prepared, partial, missing, weeklyAveragePercent, missingStreak })
   }
 
+  users.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
+
   const teamCompliancePercent = users.length
     ? users.reduce((acc, u) => acc + u.weeklyAveragePercent, 0) / users.length
     : 0
