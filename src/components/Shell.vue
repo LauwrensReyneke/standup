@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getSession, logout, type SessionUser } from '../lib/auth'
 import { ApiError } from '../lib/apiClient'
+import { faCalendarDay } from '../lib/icons'
 
 const user = ref<SessionUser | null>(null)
 const loading = ref(true)
@@ -50,6 +51,12 @@ async function doLogout() {
   await logout()
   await refresh()
 }
+
+const byPrefixAndName = {
+  fas: {
+    'calendar-day': faCalendarDay,
+  },
+} as const
 </script>
 
 <template>
@@ -57,7 +64,9 @@ async function doLogout() {
     <header class="sticky top-0 z-10 border-b border-slate-900/10 bg-white/60 backdrop-blur-xl">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <div class="flex items-center gap-3">
-          <div class="h-10 w-10 rounded-2xl bg-white/70 shadow-sm ring-1 ring-slate-900/10"></div>
+          <div class="grid h-10 w-10 place-items-center rounded-2xl bg-white/70 shadow-sm ring-1 ring-slate-900/10">
+            <FontAwesomeIcon :icon="byPrefixAndName.fas['calendar-day']" class="text-slate-900/80 p-2 m-auto" />
+          </div>
           <div>
             <div class="text-sm font-semibold tracking-tight text-slate-900">STRICT Standups</div>
             <div class="text-xs text-slate-500">Daily Standup - data capturing</div>
