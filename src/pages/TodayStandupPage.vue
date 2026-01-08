@@ -36,7 +36,7 @@ async function load() {
   loading.value = true
   error.value = null
   try {
-    data.value = await apiFetch<TodayResponse>('/api/standup/today', { method: 'GET' })
+    data.value = await apiFetch<TodayResponse>('/api/standup?op=today', { method: 'GET' })
   } catch (e: any) {
     error.value = e?.body?.error || 'Failed to load'
   } finally {
@@ -55,7 +55,7 @@ async function save(row: Row) {
   saving.value = true
   saveError.value = null
   try {
-    data.value = await apiFetch<TodayResponse>('/api/standup/update', {
+    data.value = await apiFetch<TodayResponse>('/api/standup?op=update', {
       method: 'PUT',
       headers: { 'if-match': data.value.etag },
       body: JSON.stringify({

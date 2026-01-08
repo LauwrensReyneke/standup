@@ -43,7 +43,7 @@ async function load() {
 
   try {
     const date = dateParam.value
-    data.value = await apiFetch<DayResponse>(`/api/standup/day?date=${encodeURIComponent(date)}`, { method: 'GET' })
+    data.value = await apiFetch<DayResponse>(`/api/standup?op=day&date=${encodeURIComponent(date)}`, { method: 'GET' })
   } catch (e: any) {
     error.value = e?.body?.error || 'Failed to load'
   } finally {

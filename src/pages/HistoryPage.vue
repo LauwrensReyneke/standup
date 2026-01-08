@@ -18,7 +18,7 @@ const last10 = computed(() => days.value.slice(0, 10))
 onMounted(async () => {
   loading.value = true
   try {
-    const res = await apiFetch<{ days: HistoryDay[] }>('/api/standup/history?limit=14', { method: 'GET' })
+    const res = await apiFetch<{ days: HistoryDay[] }>('/api/standup?op=history&limit=14', { method: 'GET' })
     days.value = res.days
   } catch (e: any) {
     error.value = e?.body?.error || 'Failed to load'

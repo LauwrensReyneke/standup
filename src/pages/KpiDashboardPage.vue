@@ -28,7 +28,7 @@ const sortedUsers = computed(() => {
 onMounted(async () => {
   loading.value = true
   try {
-    data.value = await apiFetch('/api/kpi/team', { method: 'GET' })
+    data.value = await apiFetch('/api/kpi?op=team', { method: 'GET' })
   } catch (e: any) {
     error.value = e?.body?.error || 'Failed to load'
   } finally {

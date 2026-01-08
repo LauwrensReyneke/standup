@@ -36,14 +36,14 @@ const subscribeTeamCode = ref('')
 const activeTeam = computed(() => teams.value.find((t) => t.id === activeTeamId.value) || null)
 
 async function loadTeams() {
-  const res = await apiFetch('/api/manager/teams', { method: 'GET' })
+  const res = await apiFetch('/api/manager?op=teams', { method: 'GET' })
   const data = res as TeamsResponse
   teams.value = data.teams
   activeTeamId.value = data.activeTeamId
 }
 
 async function loadTeamMembers() {
-  teamConfig.value = await apiFetch('/api/manager/team-members', { method: 'GET' })
+  teamConfig.value = await apiFetch('/api/manager?op=members', { method: 'GET' })
   if (teamConfig.value) editingTeamName.value = teamConfig.value.teamName
 }
 
@@ -65,7 +65,7 @@ async function selectTeam(teamId: string) {
   loading.value = true
   error.value = null
   try {
-    await apiFetch('/api/teams/select', { method: 'POST', body: JSON.stringify({ teamId }) })
+    await apiFetch('/api/auth?op=select-team', { method: 'PUT', body: JSON.stringify({ teamId }) })
     activeTeamId.value = teamId
     await loadTeams()
     await loadTeamMembers()
@@ -81,7 +81,7 @@ async function createTeam() {
   loading.value = true
   error.value = null
   try {
-    const res = (await apiFetch('/api/manager/teams', {
+    const res = (await apiFetch('/api/manager?op=teams', {
       method: 'POST',
       body: JSON.stringify({ name: creatingTeamName.value.trim(), standupCutoffTime: creatingTeamCutoff.value }),
     })) as TeamsResponse
@@ -101,7 +101,7 @@ async function createTeam() {
 async function setTeamName(name: string) {
   if (!teamConfig.value) return
   editingTeamName.value = name
-  teamConfig.value = await apiFetch('/api/manager/team', {
+  teamConfig.value = await apiFetch('/api/manager?op=team', {
     method: 'PUT',
     body: JSON.stringify({ teamName: name }),
   })
@@ -111,7 +111,7 @@ async function setTeamName(name: string) {
 }
 
 async function setCutoff(time: string) {
-  teamConfig.value = await apiFetch('/api/manager/team', {
+  teamConfig.value = await apiFetch('/api/manager?op=team', {
     method: 'PUT',
     body: JSON.stringify({ standupCutoffTime: time }),
   })
@@ -119,7 +119,7 @@ async function setCutoff(time: string) {
 }
 
 async function addMember() {
-  teamConfig.value = await apiFetch('/api/manager/team-members', {
+  teamConfig.value = await apiFetch('/api/manager?op=members', {
     method: 'POST',
     body: JSON.stringify({ email: newMemberEmail.value, name: newMemberName.value, role: newMemberRole.value }),
   })
@@ -130,7 +130,7 @@ async function addMember() {
 }
 
 async function removeMember(userId: string) {
-  teamConfig.value = await apiFetch('/api/manager/team-members', {
+  teamConfig.value = await apiFetch('/api/manager?op=members', {
     method: 'DELETE',
     body: JSON.stringify({ userId }),
   })
@@ -138,7 +138,7 @@ async function removeMember(userId: string) {
 }
 
 async function setRole(userId: string, role: 'manager' | 'member') {
-  teamConfig.value = await apiFetch('/api/manager/team-members', {
+  teamConfig.value = await apiFetch('/api/manager?op=members', {
     method: 'PUT',
     body: JSON.stringify({ userId, role }),
   })
@@ -147,12 +147,11 @@ async function setRole(userId: string, role: 'manager' | 'member') {
 async function saveUser(userId: string, patch: { name?: string; email?: string }) {
   savingUserId.value = userId
   try {
-    await apiFetch('/api/manager/users', {
+    // Consolidated manager admin endpoint (Hobby plan function limit)
+    teamConfig.value = await apiFetch('/api/manager?op=user', {
       method: 'PATCH',
       body: JSON.stringify({ userId, ...patch }),
     })
-    // Reload members so we display canonical data
-    await loadTeamMembers()
   } finally {
     savingUserId.value = null
   }
@@ -163,7 +162,7 @@ async function subscribeToTeam() {
   loading.value = true
   error.value = null
   try {
-    const res = (await apiFetch('/api/manager/subscribe', {
+    const res = (await apiFetch('/api/manager?op=teams', {
       method: 'POST',
       body: JSON.stringify({ teamCode: subscribeTeamCode.value.trim() }),
     })) as TeamsResponse
