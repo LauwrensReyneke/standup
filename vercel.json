@@ -5,9 +5,12 @@
       "destination": "/api/$1"
     },
     {
+      "source": "/api/manager/cutoff",
+      "destination": "/api/manager/team"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
 }
-
