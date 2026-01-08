@@ -26,9 +26,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const days = [] as Array<{ date: string; rows: Array<{ userId: string; name: string; status: any }> }>
   for (const b of blobs) {
     const { data } = await readJson<any>(b.url)
+    const rows = (data.rows || []).map((r: any) => ({ userId: r.userId, name: r.name, status: r.status }))
+    rows.sort((a: any, b: any) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
+
     days.push({
       date: data.date,
-      rows: (data.rows || []).map((r: any) => ({ userId: r.userId, name: r.name, status: r.status })),
+      rows,
     })
   }
 

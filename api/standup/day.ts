@@ -35,6 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (parsed.data.create) {
     const { doc, etag } = await getOrCreateStandup(team, date)
+    const rows = [...doc.rows].sort((a: any, b: any) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
     return json(res, 200, {
       date: doc.date,
       cutoffAt,
@@ -42,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       etag,
       teamName: team.name,
       viewer: { userId: viewer.id, role: viewer.role },
-      rows: doc.rows,
+      rows,
     })
   }
 
@@ -50,6 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!blob) return json(res, 404, { error: 'Standup not found' })
 
   const { data: doc } = await readJson<any>(blob.url)
+  const rows = [...(doc.rows || [])].sort((a: any, b: any) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
 
   return json(res, 200, {
     date: doc.date,
@@ -58,7 +60,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     etag: String(doc.version ?? 0),
     teamName: team.name,
     viewer: { userId: viewer.id, role: viewer.role },
-    rows: doc.rows,
+    rows,
   })
 }
-
