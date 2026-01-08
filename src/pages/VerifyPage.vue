@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { verifyMagicLink } from '../lib/auth'
+import { refreshSession } from '../lib/session'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,6 +20,8 @@ onMounted(async () => {
   }
   try {
     await verifyMagicLink(token.value)
+    // Ensure the app-level nav reflects the newly authenticated session immediately.
+    await refreshSession()
     await router.replace('/today')
   } catch (e: any) {
     error.value = e?.body?.error || 'Verification failed'

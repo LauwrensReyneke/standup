@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getSession, logout, type SessionUser } from '../lib/auth'
+import { logout } from '../lib/auth'
+import { refreshSession, sessionUser } from '../lib/session'
 import { ApiError } from '../lib/apiClient'
 import { faCalendarDay } from '../lib/icons'
 
-const user = ref<SessionUser | null>(null)
 const loading = ref(true)
 const fatal = ref<string | null>(null)
 const route = useRoute()
 const router = useRouter()
+
+const currentUser = computed(() => sessionUser.value)
 
 const showBackendHint = computed(() => {
   // Only show this on non-public pages; public login page can still work without session.
@@ -22,8 +24,7 @@ async function refresh() {
   fatal.value = null
 
   try {
-    const { user: u } = await getSession()
-    user.value = u
+    const u = await refreshSession()
 
     const publicRoutes = new Set(['/login', '/login/verify'])
     if (!u && !publicRoutes.has(route.path)) await router.replace('/login')
@@ -39,7 +40,7 @@ async function refresh() {
     } else {
       fatal.value = 'Backend unreachable. Start `vercel dev --listen 3000` (or set VITE_API_TARGET).'
     }
-    user.value = null
+    sessionUser.value = null
   } finally {
     loading.value = false
   }
@@ -78,7 +79,7 @@ const byPrefixAndName = {
           <RouterLink class="rounded-xl px-3 py-2 text-slate-600 hover:bg-slate-900/5 hover:text-slate-900" to="/history">History</RouterLink>
           <RouterLink class="rounded-xl px-3 py-2 text-slate-600 hover:bg-slate-900/5 hover:text-slate-900" to="/kpi">KPIs</RouterLink>
           <RouterLink
-            v-if="user?.role === 'manager'"
+            v-if="currentUser?.role === 'manager'"
             class="rounded-xl px-3 py-2 text-slate-600 hover:bg-slate-900/5 hover:text-slate-900"
             to="/manager"
             >Manager</RouterLink
@@ -86,12 +87,12 @@ const byPrefixAndName = {
         </nav>
 
         <div class="flex items-center gap-3">
-          <div v-if="user" class="text-right">
-            <div class="text-xs text-slate-700">{{ user.name }}</div>
-            <div class="text-[11px] text-slate-500">{{ user.email }}</div>
+          <div v-if="currentUser" class="text-right">
+            <div class="text-xs text-slate-700">{{ currentUser.name }}</div>
+            <div class="text-[11px] text-slate-500">{{ currentUser.email }}</div>
           </div>
           <button
-            v-if="user"
+            v-if="currentUser"
             class="btn btn-primary rounded-xl px-3 py-2"
             @click="doLogout"
           >
