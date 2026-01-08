@@ -152,6 +152,30 @@ export async function ensureBootstrapTeamAndManager(opts?: { email?: string; nam
     if (!userBlob) return
     const { data: user } = await readJson<User>(userBlob.url)
 
+    // Self-heal: user exists but their team blob is missing (common after blob resets).
+    // Recreate the team and reattach this manager to it.
+    const existingTeam = user.teamId ? await getTeam(user.teamId) : null
+    if (!existingTeam) {
+      const teamId = nanoid()
+      const ts = nowIso()
+
+      const team: Team = {
+        id: teamId,
+        name: teamName,
+        standupCutoffTime: process.env.DEFAULT_STANDUP_CUTOFF || '09:30',
+        memberUserIds: [user.id],
+        createdAt: ts,
+        updatedAt: ts,
+      }
+
+      const updatedUser: User = { ...user, teamId, role: 'manager', updatedAt: ts }
+
+      await putJson(teamKey(teamId), team)
+      await putJson(usersKey(updatedUser.id), updatedUser)
+      await putJson(teamByEmailKey(updatedUser.email.toLowerCase()), { userId: updatedUser.id })
+      return
+    }
+
     if (user.role !== 'manager') {
       const updated: User = { ...user, role: 'manager' }
       await putJson(usersKey(updated.id), updated)

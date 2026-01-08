@@ -16,6 +16,7 @@ import { readJson } from '../_lib/blob.js'
 
 const AddBody = z.object({ email: z.string().email(), name: z.string().min(1) })
 const RemoveBody = z.object({ userId: z.string().min(5) })
+const UpdateTeamBody = z.object({ teamName: z.string().min(1).max(80) })
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   await ensureBootstrapTeamAndManager()
@@ -37,6 +38,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       members.push({ userId: data.id, name: data.name, email: data.email, role: data.role })
     }
 
+    members.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
+
+    return json(res, 200, {
+      teamId: team.id,
+      teamName: team.name,
+      standupCutoffTime: team.standupCutoffTime,
+      members,
+    })
+  }
+
+  // PUT /api/manager/team (update team metadata)
+  if (req.method === 'PUT') {
+    const body = UpdateTeamBody.safeParse(req.body)
+    if (!body.success) return json(res, 400, { error: 'Invalid request body' })
+
+    team.name = body.data.teamName.trim()
+    await saveTeam(team)
+
+    // Return the same shape as GET for convenience
+    const members = [] as any[]
+    for (const uid of team.memberUserIds) {
+      const b = await findBlob(usersKey(uid))
+      if (!b) continue
+      const { data } = await readJson<any>(b.url)
+      members.push({ userId: data.id, name: data.name, email: data.email, role: data.role })
+    }
     members.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
 
     return json(res, 200, {
@@ -118,5 +145,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   }
 
-  return badMethod(req, res, ['GET', 'POST', 'DELETE'])
+  return badMethod(req, res, ['GET', 'POST', 'PUT', 'DELETE'])
 }

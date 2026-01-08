@@ -16,16 +16,29 @@ const data = ref<TeamConfig | null>(null)
 const newMemberEmail = ref('')
 const newMemberName = ref('')
 
+const editingTeamName = ref('')
+
 async function load() {
   loading.value = true
   error.value = null
   try {
     data.value = await apiFetch('/api/manager/team', { method: 'GET' })
+    editingTeamName.value = data.value.teamName
   } catch (e: any) {
     error.value = e?.body?.error || 'Failed to load'
   } finally {
     loading.value = false
   }
+}
+
+async function setTeamName(name: string) {
+  if (!data.value) return
+  editingTeamName.value = name
+  data.value = await apiFetch('/api/manager/team', {
+    method: 'PUT',
+    body: JSON.stringify({ teamName: name }),
+  })
+  editingTeamName.value = data.value.teamName
 }
 
 async function setCutoff(time: string) {
@@ -62,6 +75,14 @@ onMounted(load)
     <div class="card p-6">
       <h1 class="text-2xl font-semibold">Manager Dashboard</h1>
       <p class="mt-2 text-sm text-slate-600">Lock the table structure by controlling membership and cutoff time.</p>
+
+      <div class="mt-5">
+        <label class="text-xs font-semibold text-slate-700">Team name</label>
+        <div class="mt-2 flex gap-2">
+          <input v-model="editingTeamName" class="input" placeholder="Team name" />
+          <button class="btn btn-primary" @click="setTeamName(editingTeamName)">Save</button>
+        </div>
+      </div>
     </div>
 
     <div class="grid gap-6 md:grid-cols-2">
@@ -105,7 +126,10 @@ onMounted(load)
               <td class="td text-slate-600">{{ m.email }}</td>
               <td class="td text-slate-600">{{ m.role }}</td>
               <td class="td">
-                <button class="btn btn-ghost px-3 py-2 text-xs text-rose-700 ring-1 ring-inset ring-rose-200 hover:bg-rose-50" @click="removeMember(m.userId)">
+                <button
+                  class="btn btn-ghost px-3 py-2 text-xs text-rose-700 ring-1 ring-inset ring-rose-200 hover:bg-rose-50"
+                  @click="removeMember(m.userId)"
+                >
                   Remove
                 </button>
               </td>
