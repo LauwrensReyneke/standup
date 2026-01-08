@@ -191,4 +191,37 @@ body {
   .markdown p {
     @apply my-1;
   }
+
+  /* Overlay markdown editor: textarea provides caret/typing, view layer shows rendered markdown */
+  .markdown-editor-input {
+    color: transparent;
+  }
+
+  .markdown-editor-input:disabled {
+    color: transparent;
+  }
+
+  .markdown-editor-input::selection {
+    background: rgba(15, 23, 42, 0.15); /* slate-900/15 */
+  }
+
+  /* Keep the cursor visible while text is transparent */
+  .markdown-editor-input {
+    -webkit-text-fill-color: transparent;
+    text-fill-color: transparent;
+  }
+
+  .markdown-editor-input:disabled {
+    -webkit-text-fill-color: transparent;
+    text-fill-color: transparent;
+  }
+
+  /* Ensure the rendered markdown doesn't capture clicks while editing */
+  .markdown-editor-view {
+    pointer-events: none;
+  }
+
+  .markdown-editor-input:not(:focus) + .markdown-editor-view {
+    pointer-events: auto;
+  }
 }
