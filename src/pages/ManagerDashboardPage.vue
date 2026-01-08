@@ -42,7 +42,7 @@ async function setTeamName(name: string) {
 }
 
 async function setCutoff(time: string) {
-  data.value = await apiFetch('/api/manager/cutoff', {
+  data.value = await apiFetch('/api/manager/team', {
     method: 'PUT',
     body: JSON.stringify({ standupCutoffTime: time }),
   })
@@ -62,6 +62,25 @@ async function removeMember(userId: string) {
     method: 'DELETE',
     body: JSON.stringify({ userId }),
   })
+}
+
+const resetting = ref(false)
+const resetSecret = ref('')
+
+async function resetAllData() {
+  resetting.value = true
+  try {
+    await apiFetch('/api/manager/team', {
+      method: 'POST',
+      headers: { 'x-reset-secret': resetSecret.value },
+      body: JSON.stringify({ confirm: 'DELETE' }),
+    })
+    resetSecret.value = ''
+  } catch (e: any) {
+    error.value = e?.body?.error || 'Failed to reset'
+  } finally {
+    resetting.value = false
+  }
 }
 
 onMounted(load)
@@ -136,6 +155,28 @@ onMounted(load)
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <div class="card p-6">
+      <h2 class="text-sm font-semibold text-slate-900">Danger zone</h2>
+      <p class="mt-1 text-xs text-slate-600">Reset all data to default values. This cannot be undone.</p>
+
+      <div class="mt-4 flex gap-2">
+        <input
+          v-model="resetSecret"
+          type="text"
+          class="input flex-1"
+          placeholder="Enter reset secret"
+        />
+        <button
+          class="btn btn-danger"
+          @click="resetAllData"
+          :disabled="resetting"
+        >
+          <span v-if="resetting" class="loading">Resetting…</span>
+          <span v-else>Reset all data</span>
+        </button>
       </div>
     </div>
   </div>
