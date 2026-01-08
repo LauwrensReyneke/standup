@@ -3,7 +3,7 @@ import dayjs from 'dayjs'
 import { z } from 'zod'
 import { badMethod, json } from '../_lib/http.js'
 import { readSession } from '../_lib/auth.js'
-import { ensureBootstrapTeamAndManager, getTeam, updateStandupEntry } from '../_lib/store.js'
+import { ensureBootstrapTeamAndManager, ensureTeamForViewer, getTeam, updateStandupEntry } from '../_lib/store.js'
 
 const Body = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -18,10 +18,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   await ensureBootstrapTeamAndManager()
 
-  const viewer = readSession(req)
+  const viewer = await readSession(req)
   if (!viewer) return json(res, 401, { error: 'Unauthorized' })
 
-  const team = await getTeam(viewer.teamId)
+  // viewer is a concrete SessionUser here.
+  const team = (await getTeam(viewer.teamId)) || (await ensureTeamForViewer(viewer))
   if (!team) return json(res, 404, { error: 'Team not found' })
 
   const body = Body.safeParse(req.body)

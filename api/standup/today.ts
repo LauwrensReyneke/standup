@@ -2,17 +2,17 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import dayjs from 'dayjs'
 import { badMethod, json } from '../_lib/http.js'
 import { readSession } from '../_lib/auth.js'
-import { ensureBootstrapTeamAndManager, getOrCreateStandup, getTeam } from '../_lib/store.js'
+import { ensureBootstrapTeamAndManager, ensureTeamForViewer, getOrCreateStandup, getTeam } from '../_lib/store.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return badMethod(req, res, ['GET'])
 
   await ensureBootstrapTeamAndManager()
 
-  const viewer = readSession(req)
+  const viewer = await readSession(req)
   if (!viewer) return json(res, 401, { error: 'Unauthorized' })
 
-  const team = await getTeam(viewer.teamId)
+  const team = (await getTeam(viewer.teamId)) || (await ensureTeamForViewer(viewer))
   if (!team) return json(res, 404, { error: 'Team not found' })
 
   const date = dayjs().format('YYYY-MM-DD')

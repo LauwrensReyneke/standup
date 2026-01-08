@@ -222,6 +222,42 @@ export async function saveTeam(team: Team) {
   await putJson(teamKey(team.id), team)
 }
 
+/**
+ * Self-heal guard: given a user (usually from session), ensure their team exists.
+ * If the team is missing, create a new team and attach the user to it.
+ */
+export async function ensureTeamForUser(user: Pick<User, 'id' | 'email' | 'teamId'> & { name?: string }): Promise<Team | null> {
+  const existing = user.teamId ? await getTeam(user.teamId) : null
+  if (existing) return existing
+
+  const ts = nowIso()
+  const teamId = nanoid()
+
+  const team: Team = {
+    id: teamId,
+    name: process.env.BOOTSTRAP_TEAM_NAME || 'Engineering',
+    standupCutoffTime: process.env.DEFAULT_STANDUP_CUTOFF || '09:30',
+    memberUserIds: [user.id],
+    createdAt: ts,
+    updatedAt: ts,
+  }
+
+  await putJson(teamKey(teamId), team)
+
+  // Update user record to point to the recreated team (best-effort).
+  const uBlob = await findBlob(usersKey(user.id))
+  if (uBlob) {
+    const uDoc = await readJsonOrNull<User>(uBlob.url)
+    if (uDoc) {
+      const updated: User = { ...uDoc.data, teamId, updatedAt: ts }
+      await putJson(usersKey(updated.id), updated)
+      await putJson(teamByEmailKey(updated.email.toLowerCase()), { userId: updated.id })
+    }
+  }
+
+  return team
+}
+
 export async function getOrCreateStandup(team: Team, date: string): Promise<{ doc: StandupDoc; etag: string } & { url: string }> {
   const key = standupKey(team.id, date)
   const blob = await findBlob(key)

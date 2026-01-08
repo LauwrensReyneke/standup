@@ -3,7 +3,7 @@ import dayjs from 'dayjs'
 import { list } from '@vercel/blob'
 import { badMethod, json } from '../_lib/http.js'
 import { readSession } from '../_lib/auth.js'
-import { PREFIX, StandupDoc, StandupStatus, getTeam, usersKey, findBlob } from '../_lib/store.js'
+import { PREFIX, StandupDoc, StandupStatus, getTeam, usersKey, findBlob, ensureTeamForViewer } from '../_lib/store.js'
 import { readJson } from '../_lib/blob.js'
 
 function score(status: StandupStatus) {
@@ -15,10 +15,10 @@ function score(status: StandupStatus) {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return badMethod(req, res, ['GET'])
 
-  const viewer = readSession(req)
+  const viewer = await readSession(req)
   if (!viewer) return json(res, 401, { error: 'Unauthorized' })
 
-  const team = await getTeam(viewer.teamId)
+  const team = (await getTeam(viewer.teamId)) || (await ensureTeamForViewer(viewer))
   if (!team) return json(res, 404, { error: 'Team not found' })
 
   const prefix = `${PREFIX}/standups/${team.id}/`
