@@ -96,13 +96,70 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 200, { ok: true })
     }
 
-    const text = `Sign in to Standups:\n\n${verifyUrl}\n\nThis link expires in 15 minutes. If you didnt request this email, you can ignore it.`
+    const text = `Sign in to Standups:\n\n${verifyUrl}\n\nThis link expires in 15 minutes. If you didn't request this email, you can ignore it.`
+
+    const escapedUrl = verifyUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
     const html = `
-      <p>Sign in to Standups:</p>
-      <p><a href="${verifyUrl}">Sign in</a></p>
-      <p style="color:#64748b;font-size:12px;line-height:1.4">
-        This link expires in 15 minutes. If you didnt request this email, you can ignore it.
-      </p>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="x-apple-disable-message-reformatting" />
+    <title>Sign in to Standups</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f1f5f9;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
+            <tr>
+              <td style="padding:22px 24px;background:linear-gradient(135deg,#0f172a,#334155);color:#ffffff;">
+                <div style="font-size:14px;letter-spacing:.08em;text-transform:uppercase;opacity:.9;">Standups</div>
+                <div style="font-size:22px;font-weight:700;margin-top:6px;line-height:1.2;">Sign in to your account</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 24px 8px 24px;color:#0f172a;">
+                <p style="margin:0 0 14px 0;font-size:15px;line-height:1.55;">Use the button below to sign in. This link expires in <strong>15 minutes</strong>.</p>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:8px 24px 18px 24px;">
+                <!--[if mso]>
+                <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapedUrl}" style="height:46px;v-text-anchor:middle;width:220px;" arcsize="12%" stroke="f" fillcolor="#2563eb">
+                  <w:anchorlock/>
+                  <center style="color:#ffffff;font-family:Segoe UI, Arial, sans-serif;font-size:16px;font-weight:bold;">Sign in</center>
+                </v:roundrect>
+                <![endif]-->
+                <!--[if !mso]><!-- -->
+                <a href="${escapedUrl}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:12px;font-weight:700;font-size:16px;">Sign in</a>
+                <!--<![endif]-->
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 24px 20px 24px;color:#334155;">
+                <p style="margin:0 0 10px 0;font-size:12px;line-height:1.6;color:#64748b;">If the button doesn’t work, copy and paste this URL into your browser:</p>
+                <p style="margin:0;font-size:12px;line-height:1.6;word-break:break-all;">
+                  <a href="${escapedUrl}" style="color:#2563eb;text-decoration:underline;">${escapedUrl}</a>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 24px 22px 24px;border-top:1px solid #e2e8f0;color:#64748b;">
+                <p style="margin:0;font-size:12px;line-height:1.6;">If you didn't request this email, you can safely ignore it.</p>
+              </td>
+            </tr>
+          </table>
+          <div style="max-width:560px;margin:14px auto 0 auto;color:#94a3b8;font-size:11px;line-height:1.4;text-align:center;">
+            <div>Sent by Standups</div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
     `.trim()
 
     const resp = await fetch('https://api.resend.com/emails', {
@@ -177,4 +234,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   return badMethod(req, res, ['GET', 'POST', 'PUT'])
 }
-
