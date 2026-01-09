@@ -145,11 +145,13 @@ export async function readSession(req: VercelRequest): Promise<SessionUser | nul
 
 export function sessionCookie(value: string | null) {
   const secure = process.env.NODE_ENV === 'production'
+  const domain = (process.env.COOKIE_DOMAIN || '').trim() || undefined
   return serializeCookie('standup_session', value ?? '', {
     httpOnly: true,
     secure,
     sameSite: 'lax',
     path: '/',
+    domain,
     maxAge: value ? 60 * 60 * 24 * 30 : 0,
   })
 }

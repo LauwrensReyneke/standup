@@ -3,6 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 export function json(res: VercelResponse, status: number, body: unknown) {
   res.status(status)
   res.setHeader('content-type', 'application/json')
+  res.setHeader('cache-control', 'no-store')
   res.send(JSON.stringify(body))
 }
 
