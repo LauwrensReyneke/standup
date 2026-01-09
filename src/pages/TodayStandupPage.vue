@@ -52,7 +52,44 @@ async function load() {
   }
 }
 
+// Tracks rows the user has touched recently so polling can't clobber them.
+const dirtyRowUserIds = ref(new Set<string>())
+
+function markDirty(userId: string) {
+  dirtyRowUserIds.value.add(userId)
+}
+
+function clearDirty(userId: string) {
+  dirtyRowUserIds.value.delete(userId)
+}
+
+function mergeLatestIntoCurrent(current: TodayResponse, latest: TodayResponse) {
+  // Preserve any locally edited rows; otherwise take server rows.
+  const latestById = new Map(latest.rows.map((r) => [r.userId, r]))
+
+  const mergedRows = current.rows.map((r) => {
+    if (dirtyRowUserIds.value.has(r.userId)) return r
+    const fromServer = latestById.get(r.userId)
+    return fromServer ? fromServer : r
+  })
+
+  // If the server introduced new rows (new team member), add them.
+  for (const [userId, row] of latestById) {
+    if (!mergedRows.some((x) => x.userId === userId)) mergedRows.push(row)
+  }
+
+  // Keep current object identity stable where possible (helps editors).
+  current.date = latest.date
+  current.cutoffAt = latest.cutoffAt
+  current.editable = latest.editable
+  current.etag = latest.etag
+  current.teamName = latest.teamName
+  current.viewer = latest.viewer
+  current.rows = mergedRows
+}
+
 function updateRow(row: Row, patch: Partial<Pick<Row, 'yesterday' | 'today' | 'blockers'>>): Row {
+  markDirty(row.userId)
   const next = { ...row, ...patch }
   next.status = calcStatus(next)
   return next
@@ -66,7 +103,7 @@ async function save(row: Row) {
     const isManager = data.value.viewer.role === 'manager'
     const ifMatch = isManager ? data.value.etag : String(row.version ?? 0)
 
-    data.value = await apiFetch<TodayResponse>('/api/standup?op=update', {
+    const next = await apiFetch<TodayResponse>('/api/standup?op=update', {
       method: 'PUT',
       headers: { 'if-match': ifMatch },
       body: JSON.stringify({
@@ -77,6 +114,10 @@ async function save(row: Row) {
         blockers: row.blockers,
       }),
     })
+
+    // Apply server state, but keep the currently edited row stable.
+    mergeLatestIntoCurrent(data.value, next)
+    clearDirty(row.userId)
   } catch (e: any) {
     if (e instanceof ApiError && e.status === 409) {
       saveError.value = 'This row was updated elsewhere. Please reload and try again.'
@@ -96,32 +137,47 @@ const sortedRows = computed(() => {
 const polling = ref(true)
 const focusedRowUserId = ref<string | null>(null)
 let pollTimer: number | null = null
+let pollIntervalMs = 8000
+
+function isTabVisible() {
+  return typeof document !== 'undefined' ? document.visibilityState === 'visible' : true
+}
 
 async function pollOnce() {
   if (!polling.value) return
+  if (!isTabVisible()) return
   if (saving.value) return
   if (focusedRowUserId.value) return
   if (!data.value) return
 
   try {
     const latest = await apiFetch<TodayResponse>('/api/standup?op=today', { method: 'GET' })
-    // Only update the UI when something changed.
+
     if (latest.etag !== data.value.etag) {
-      data.value = latest
+      mergeLatestIntoCurrent(data.value, latest)
     }
+
+    // If things are stable, back off a bit (less load).
+    pollIntervalMs = Math.min(30000, Math.floor(pollIntervalMs * 1.15))
   } catch {
-    // Ignore polling errors; user can still manually reload.
+    // If polling fails, back off more aggressively.
+    pollIntervalMs = Math.min(60000, Math.floor(pollIntervalMs * 1.5))
+  } finally {
+    // Re-schedule dynamically.
+    if (pollTimer) window.clearTimeout(pollTimer)
+    pollTimer = window.setTimeout(pollOnce, pollIntervalMs)
   }
 }
 
 function startPolling() {
   stopPolling()
-  pollTimer = window.setInterval(pollOnce, 5000)
+  pollIntervalMs = 8000
+  pollTimer = window.setTimeout(pollOnce, pollIntervalMs)
 }
 
 function stopPolling() {
   if (pollTimer) {
-    window.clearInterval(pollTimer)
+    window.clearTimeout(pollTimer)
     pollTimer = null
   }
 }
@@ -129,15 +185,29 @@ function stopPolling() {
 function markFocus(row: Row, isFocused: boolean) {
   if (!canEditRow(row)) return
   focusedRowUserId.value = isFocused ? row.userId : null
+  if (!isFocused) {
+    // When user stops editing, restart polling with a short delay.
+    startPolling()
+  } else {
+    // Don't poll while editing.
+    stopPolling()
+  }
+}
+
+function onVisibilityChange() {
+  if (isTabVisible()) startPolling()
+  else stopPolling()
 }
 
 onMounted(() => {
   load()
+  document.addEventListener('visibilitychange', onVisibilityChange)
   startPolling()
 })
 
 onBeforeUnmount(() => {
   stopPolling()
+  document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 </script>
 
