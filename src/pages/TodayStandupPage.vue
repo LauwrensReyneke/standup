@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import dayjs from 'dayjs'
 import { apiFetch, ApiError } from '../lib/apiClient'
 import { calcStatus, statusLabel, type StandupStatus } from '../lib/standup'
+import RichTextEditor from '../components/RichTextEditor.vue'
 
 type Row = {
   userId: string
@@ -131,32 +132,29 @@ onMounted(load)
               </td>
 
               <td class="td">
-                <textarea
+                <RichTextEditor
                   :disabled="!data.editable"
-                  :value="row.yesterday"
-                  class="textarea"
-                  placeholder="- finished [BAC-125](https://...)"
-                  @input="data.rows[data.rows.findIndex((r) => r.userId === row.userId)] = updateRow(row, { yesterday: ($event.target as HTMLTextAreaElement).value })"
+                  :model-value="row.yesterday"
+                  placeholder="Type '-' for a list, '# ' for a heading"
+                  @update:model-value="data.rows[data.rows.findIndex((r) => r.userId === row.userId)] = updateRow(row, { yesterday: $event })"
                 />
               </td>
 
               <td class="td">
-                <textarea
+                <RichTextEditor
                   :disabled="!data.editable"
-                  :value="row.today"
-                  class="textarea"
-                  placeholder="- ship X\n- review PRs"
-                  @input="data.rows[data.rows.findIndex((r) => r.userId === row.userId)] = updateRow(row, { today: ($event.target as HTMLTextAreaElement).value })"
+                  :model-value="row.today"
+                  placeholder="What's next?"
+                  @update:model-value="data.rows[data.rows.findIndex((r) => r.userId === row.userId)] = updateRow(row, { today: $event })"
                 />
               </td>
 
               <td class="td">
-                <textarea
+                <RichTextEditor
                   :disabled="!data.editable"
-                  :value="row.blockers"
-                  class="textarea"
-                  placeholder="None"
-                  @input="data.rows[data.rows.findIndex((r) => r.userId === row.userId)] = updateRow(row, { blockers: ($event.target as HTMLTextAreaElement).value })"
+                  :model-value="row.blockers"
+                  placeholder="Blockers (or 'None')"
+                  @update:model-value="data.rows[data.rows.findIndex((r) => r.userId === row.userId)] = updateRow(row, { blockers: $event })"
                 />
               </td>
 
