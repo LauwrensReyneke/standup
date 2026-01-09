@@ -178,4 +178,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   return badMethod(req, res, ['GET', 'PUT', 'POST'])
 }
-

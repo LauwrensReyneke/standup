@@ -56,6 +56,11 @@ export type StandupRow = {
   blockers: string
   status: StandupStatus
   overriddenBy?: string
+  /**
+   * Per-row version used for conflict detection.
+   * This allows different users to update their own rows concurrently.
+   */
+  version?: number
 }
 
 export type StandupDoc = {
@@ -495,6 +500,7 @@ export async function getOrCreateStandup(team: Team, date: string): Promise<{ do
         today: '',
         blockers: '',
         status: 'missing',
+        version: 0,
       })
     }
 
@@ -510,13 +516,15 @@ export async function getOrCreateStandup(team: Team, date: string): Promise<{ do
   for (const uid of team.memberUserIds) {
     const existingRow = current.get(uid)
     if (existingRow) {
+      // Backfill per-row version for older stored docs.
+      if (typeof existingRow.version !== 'number') (existingRow as any).version = data.version || 0
       rows.push(existingRow)
       continue
     }
     const uBlob = await findBlob(usersKey(uid))
     if (!uBlob) continue
     const { data: u } = await readJson<User>(uBlob.url)
-    rows.push({ userId: u.id, name: u.name, yesterday: '', today: '', blockers: '', status: 'missing' })
+    rows.push({ userId: u.id, name: u.name, yesterday: '', today: '', blockers: '', status: 'missing', version: 0 })
   }
   data.rows = rows
 
@@ -550,23 +558,29 @@ export async function updateStandupEntry(opts: {
     throw e
   }
 
-  doc.rows[idx] = {
-    ...doc.rows[idx],
-    yesterday: opts.yesterday,
-    today: opts.today,
-    blockers: opts.blockers,
-    status: calcStatus(opts.yesterday, opts.today, opts.blockers),
-  }
+  const row = doc.rows[idx]
+  if (typeof row.version !== 'number') row.version = doc.version || 0
 
-  // ETag/If-Match is no longer enforced at the storage level.
-  // We keep the API contract but use a soft check based on doc.version.
+  // Conflict detection:
+  // - Managers can overwrite regardless of stale client versions.
+  // - Members only conflict if *their row* has been edited since they loaded.
   const ifMatchVersion = Number(opts.ifMatch)
-  if (Number.isFinite(ifMatchVersion) && ifMatchVersion !== doc.version) {
+  if (viewerRole !== 'manager' && Number.isFinite(ifMatchVersion) && ifMatchVersion !== row.version) {
     const e: any = new Error('Conflict')
     e.status = 409
     throw e
   }
 
+  doc.rows[idx] = {
+    ...row,
+    yesterday: opts.yesterday,
+    today: opts.today,
+    blockers: opts.blockers,
+    status: calcStatus(opts.yesterday, opts.today, opts.blockers),
+    version: (row.version || 0) + 1,
+  }
+
+  // Keep doc.version as a global monotonic counter so clients can detect any change.
   doc.version += 1
   doc.updatedAt = nowIso()
 

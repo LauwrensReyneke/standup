@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, onBeforeUnmount } from 'vue'
 import dayjs from 'dayjs'
 import { apiFetch, ApiError } from '../lib/apiClient'
 import { calcStatus, statusLabel, type StandupStatus } from '../lib/standup'
@@ -13,6 +13,7 @@ type Row = {
   blockers: string
   status: StandupStatus
   overriddenBy?: string
+  version?: number
 }
 
 type TodayResponse = {
@@ -32,6 +33,12 @@ const saving = ref(false)
 const saveError = ref<string | null>(null)
 
 const dateLabel = computed(() => (data.value ? dayjs(data.value.date).format('ddd, MMM D') : ''))
+
+const canEditRow = (row: Row) => {
+  if (!data.value?.editable) return false
+  if (data.value.viewer.role === 'manager') return true
+  return data.value.viewer.userId === row.userId
+}
 
 async function load() {
   loading.value = true
@@ -56,9 +63,12 @@ async function save(row: Row) {
   saving.value = true
   saveError.value = null
   try {
+    const isManager = data.value.viewer.role === 'manager'
+    const ifMatch = isManager ? data.value.etag : String(row.version ?? 0)
+
     data.value = await apiFetch<TodayResponse>('/api/standup?op=update', {
       method: 'PUT',
-      headers: { 'if-match': data.value.etag },
+      headers: { 'if-match': ifMatch },
       body: JSON.stringify({
         date: data.value.date,
         userId: row.userId,
@@ -69,7 +79,7 @@ async function save(row: Row) {
     })
   } catch (e: any) {
     if (e instanceof ApiError && e.status === 409) {
-      saveError.value = 'Someone updated the standup. Please reload and try again.'
+      saveError.value = 'This row was updated elsewhere. Please reload and try again.'
     } else {
       saveError.value = e?.body?.error || 'Save failed'
     }
@@ -83,7 +93,52 @@ const sortedRows = computed(() => {
   return [...data.value.rows].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
 })
 
-onMounted(load)
+const polling = ref(true)
+const focusedRowUserId = ref<string | null>(null)
+let pollTimer: number | null = null
+
+async function pollOnce() {
+  if (!polling.value) return
+  if (saving.value) return
+  if (focusedRowUserId.value) return
+  if (!data.value) return
+
+  try {
+    const latest = await apiFetch<TodayResponse>('/api/standup?op=today', { method: 'GET' })
+    // Only update the UI when something changed.
+    if (latest.etag !== data.value.etag) {
+      data.value = latest
+    }
+  } catch {
+    // Ignore polling errors; user can still manually reload.
+  }
+}
+
+function startPolling() {
+  stopPolling()
+  pollTimer = window.setInterval(pollOnce, 5000)
+}
+
+function stopPolling() {
+  if (pollTimer) {
+    window.clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+function markFocus(row: Row, isFocused: boolean) {
+  if (!canEditRow(row)) return
+  focusedRowUserId.value = isFocused ? row.userId : null
+}
+
+onMounted(() => {
+  load()
+  startPolling()
+})
+
+onBeforeUnmount(() => {
+  stopPolling()
+})
 </script>
 
 <template>
@@ -133,27 +188,33 @@ onMounted(load)
 
               <td class="td">
                 <RichTextEditor
-                  :disabled="!data.editable"
+                  :disabled="!canEditRow(row)"
                   :model-value="row.yesterday"
                   placeholder="Type '-' for a list, '# ' for a heading"
+                  @focus="markFocus(row, true)"
+                  @blur="markFocus(row, false)"
                   @update:model-value="data.rows[data.rows.findIndex((r) => r.userId === row.userId)] = updateRow(row, { yesterday: $event })"
                 />
               </td>
 
               <td class="td">
                 <RichTextEditor
-                  :disabled="!data.editable"
+                  :disabled="!canEditRow(row)"
                   :model-value="row.today"
                   placeholder="What's next?"
+                  @focus="markFocus(row, true)"
+                  @blur="markFocus(row, false)"
                   @update:model-value="data.rows[data.rows.findIndex((r) => r.userId === row.userId)] = updateRow(row, { today: $event })"
                 />
               </td>
 
               <td class="td">
                 <RichTextEditor
-                  :disabled="!data.editable"
+                  :disabled="!canEditRow(row)"
                   :model-value="row.blockers"
                   placeholder="Blockers (or 'None')"
+                  @focus="markFocus(row, true)"
+                  @blur="markFocus(row, false)"
                   @update:model-value="data.rows[data.rows.findIndex((r) => r.userId === row.userId)] = updateRow(row, { blockers: $event })"
                 />
               </td>
@@ -178,7 +239,7 @@ onMounted(load)
 
               <td class="td">
                 <button
-                  :disabled="saving || !data.editable || (data.viewer.role !== 'manager' && data.viewer.userId !== row.userId)"
+                  :disabled="saving || !canEditRow(row)"
                   class="btn btn-secondary w-full"
                   @click="save(row)"
                 >
